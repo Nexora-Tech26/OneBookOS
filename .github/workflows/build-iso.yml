@@ -35,7 +35,7 @@ jobs:
       - name: Verify ISO and checksum
         run: |
           xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -report_el_torito plain
-          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -find /casper -type f -print
+          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -ls /casper
           (cd dist && sha256sum -c SHA256SUMS)
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
