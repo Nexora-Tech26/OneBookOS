@@ -1,0 +1,17 @@
+#!/usr/bin/python3
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+w=Gtk.Window(title="Welcome to OneBookOS")
+w.set_default_size(540,260)
+w.set_border_width(24)
+w.connect("destroy", Gtk.main_quit)
+v=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14)
+w.add(v)
+label=Gtk.Label(label="OneBookOS Live Alpha 0.1\nBuilt on Ubuntu 24.04 LTS\nExperimental Live session — not yet a tested installer.")
+v.pack_start(label,True,True,0)
+btn=Gtk.Button(label="Open Device Center")
+btn.connect("clicked",lambda *_: __import__("subprocess").Popen(["/usr/local/bin/obos-device-center"]))
+v.pack_start(btn,False,False,0)
+w.show_all()
+Gtk.main()
