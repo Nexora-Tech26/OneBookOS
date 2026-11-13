@@ -1,0 +1,32 @@
+#!/usr/bin/python3
+"""Read-only OBOS device diagnostics. Does not install drivers."""
+import gi
+import subprocess
+gi.require_version("Gtk","3.0")
+from gi.repository import Gtk
+w=Gtk.Window(title="OneBook Device Center")
+w.set_default_size(800,550)
+w.connect("destroy",Gtk.main_quit)
+tabs=Gtk.Notebook()
+w.add(tabs)
+for title,cmd in [
+ ("System",["hostnamectl"]),
+ ("CPU",["lscpu"]),
+ ("PCI",["lspci","-nnk"]),
+ ("USB",["lsusb"]),
+ ("Network",["nmcli","device","status"]),
+ ("Storage",["lsblk","-o","NAME,TYPE,SIZE,MODEL"])
+]:
+ try:
+  result=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=10,check=False).stdout
+ except (OSError,subprocess.TimeoutExpired) as e:
+  result=str(e)
+ view=Gtk.TextView()
+ view.set_monospace(True)
+ view.set_editable(False)
+ view.get_buffer().set_text(result[:25000])
+ panel=Gtk.ScrolledWindow()
+ panel.add(view)
+ tabs.append_page(panel,Gtk.Label(label=title))
+w.show_all()
+Gtk.main()
