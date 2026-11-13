@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OneBook Device Center
+Comment=Hardware diagnostics
+Exec=/usr/local/bin/obos-device-center
+Icon=computer
+Terminal=false
+Categories=System;Settings;
