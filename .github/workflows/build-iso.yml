@@ -1,0 +1,48 @@
+name: Build OneBookOS Live ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'build/**'
+      - 'overlay/**'
+      - 'branding/**'
+      - '.github/workflows/build-iso.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free build space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache /usr/share/dotnet /usr/local/share/powershell /opt/ghc || true
+          df -h .
+      - name: Install build dependencies
+        run: sudo bash build/install-deps.sh
+      - name: Validate build scripts
+        run: |
+          bash -n build/install-deps.sh build/build-iso.sh
+          shellcheck build/install-deps.sh build/build-iso.sh
+          python3 tests/validate.py
+      - name: Build Ubuntu Live ISO
+        run: sudo bash build/build-iso.sh
+      - name: Verify ISO and checksum
+        run: |
+          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -report_el_torito plain
+          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -find /casper -type f -print
+          (cd dist && sha256sum -c SHA256SUMS)
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-0.1-live-amd64
+          path: |
+            dist/OneBookOS-0.1-live-amd64.iso
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
