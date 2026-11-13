@@ -11,7 +11,9 @@ MOUNTS=()
 log(){ echo "[OBOS] $*"; }
 cleanup(){
  for ((i=${#MOUNTS[@]}-1;i>=0;i--)); do
-  mountpoint -q "${MOUNTS[i]}" && umount -lf "${MOUNTS[i]}" || true
+  if mountpoint -q "${MOUNTS[i]}"; then
+   umount -lf "${MOUNTS[i]}" || true
+  fi
  done
 }
 trap cleanup EXIT
@@ -80,12 +82,13 @@ cleanup
 MOUNTS=()
 cp "$FS/boot/vmlinuz-$KVER" "$CD/casper/vmlinuz"
 cp "$FS/boot/initrd.img-$KVER" "$CD/casper/initrd"
+# shellcheck disable=SC2016 # dpkg-query expands these format placeholders, not Bash.
 chroot "$FS" dpkg-query -W --showformat='${Package} ${Version}\n' > "$CD/casper/filesystem.manifest"
 du -sx --block-size=1 "$FS" | awk '{print $1}' > "$CD/casper/filesystem.size"
 mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp xz -b 1M -noappend -e dev proc sys run tmp
 cp "$ROOT/build/grub.cfg" "$CD/boot/grub/grub.cfg"
 echo "OneBookOS Live Alpha 0.1 based on Ubuntu 24.04" > "$CD/README.txt"
-(cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum > md5sum.txt)
+(cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum) > "$CD/md5sum.txt"
 log "Build GRUB BIOS+UEFI ISO"
 grub-mkrescue -o "$OUT/OneBookOS-0.1-live-amd64.iso" "$CD" -- -volid ONEBOOKOS -iso-level 3
 (cd "$OUT" && sha256sum OneBookOS-0.1-live-amd64.iso > SHA256SUMS)
