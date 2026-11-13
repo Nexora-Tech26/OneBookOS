@@ -82,7 +82,8 @@ cleanup
 MOUNTS=()
 cp "$FS/boot/vmlinuz-$KVER" "$CD/casper/vmlinuz"
 cp "$FS/boot/initrd.img-$KVER" "$CD/casper/initrd"
-# shellcheck disable=SC2016 # dpkg-query expands these format placeholders, not Bash.
+# dpkg-query interprets the format variables; they are intentionally literal to Bash.
+# shellcheck disable=SC2016
 chroot "$FS" dpkg-query -W --showformat='${Package} ${Version}\n' > "$CD/casper/filesystem.manifest"
 du -sx --block-size=1 "$FS" | awk '{print $1}' > "$CD/casper/filesystem.size"
 mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp xz -b 1M -noappend -e dev proc sys run tmp
