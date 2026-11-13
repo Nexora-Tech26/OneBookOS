@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to OneBookOS
+Exec=/usr/local/bin/obos-welcome
+X-GNOME-Autostart-enabled=true
