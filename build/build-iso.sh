@@ -91,6 +91,6 @@ cp "$ROOT/build/grub.cfg" "$CD/boot/grub/grub.cfg"
 echo "OneBookOS Live Alpha 0.1 based on Ubuntu 24.04" > "$CD/README.txt"
 (cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum) > "$CD/md5sum.txt"
 log "Build GRUB BIOS+UEFI ISO"
-grub-mkrescue -o "$OUT/OneBookOS-0.1-live-amd64.iso" "$CD" -- -volid ONEBOOKOS -iso-level 3
+grub-mkrescue -o "$OUT/OneBookOS-0.1-live-amd64.iso" "$CD" -- -volid ONEBOOKOS
 (cd "$OUT" && sha256sum OneBookOS-0.1-live-amd64.iso > SHA256SUMS)
 log "ISO: $OUT/OneBookOS-0.1-live-amd64.iso"
