@@ -1,0 +1,13 @@
+[Unit]
+Description=OneBookOS live GUI boot smoke check
+After=lightdm.service
+Wants=lightdm.service
+ConditionPathExists=/dev/ttyS0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/obos-gui-smoke
+TimeoutStartSec=220
+
+[Install]
+WantedBy=graphical.target
