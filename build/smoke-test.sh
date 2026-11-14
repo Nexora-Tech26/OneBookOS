@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ISO="${1:?Usage: smoke-test.sh /path/to/image.iso}"
+command -v qemu-system-x86_64 >/dev/null
+LOG="$(mktemp)"
+trap 'rm -f "$LOG"' EXIT
+# The serial console comes from the GRUB kernel command line.
+timeout --signal=TERM 180s qemu-system-x86_64 \
+ -m 2048 -smp 2 -accel tcg -display none -no-reboot \
+ -cdrom "$ISO" -boot d -serial "file:$LOG" -monitor none \
+ >/dev/null 2>&1 &
+PID=$!
+SUCCESS=0
+for _ in $(seq 1 180); do
+ if grep -q 'OBOS_BOOT_OK' "$LOG"; then SUCCESS=1;break;fi
+ if grep -Eiq 'kernel panic|unable to mount root fs|unable to find a medium containing a live file system' "$LOG"; then
+   echo "Boot failure detected:" >&2
+   tail -100 "$LOG" >&2
+   break
+ fi
+ if ! kill -0 "$PID" 2>/dev/null;then break;fi
+ sleep 1
+done
+kill "$PID" 2>/dev/null || true
+wait "$PID" 2>/dev/null || true
+if [[ "$SUCCESS" != 1 ]];then
+ echo "FAILED: boot marker not received. Last serial output:" >&2
+ tail -100 "$LOG" >&2
+ exit 1
+fi
+echo "SUCCESS: boot reached multi-user.target"
