@@ -89,7 +89,19 @@ cp "$FS/boot/initrd.img-$KVER" "$CD/casper/initrd"
 # shellcheck disable=SC2016
 chroot "$FS" dpkg-query -W --showformat='${Package} ${Version}\n' > "$CD/casper/filesystem.manifest"
 du -sx --block-size=1 "$FS" | awk '{print $1}' > "$CD/casper/filesystem.size"
-mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp xz -b 1M -noappend -e dev proc sys run tmp
+# Casper needs these mountpoint directories to exist in the extracted root.
+# Do not exclude the directories themselves from SquashFS: doing so causes
+# /root/dev, /root/run, /root/proc and /root/sys mount failures at boot.
+# All bind mounts were unmounted above before SquashFS is generated.
+for directory in dev proc sys run tmp; do
+  mkdir -p "$FS/$directory"
+  if mountpoint -q "$FS/$directory"; then
+    echo "Refusing to squash a mounted $FS/$directory" >&2
+    exit 1
+  fi
+done
+chmod 1777 "$FS/tmp"
+mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp xz -b 1M -noappend
 cp "$ROOT/build/grub.cfg" "$CD/boot/grub/grub.cfg"
 echo "OneBookOS Live Alpha 0.1 based on Ubuntu 24.04" > "$CD/README.txt"
 (cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum) > "$CD/md5sum.txt"
