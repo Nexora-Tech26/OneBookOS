@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Disable XFCE Panel
-Exec=xfce4-panel --quit
-OnlyShowIn=XFCE;
-X-GNOME-Autostart-enabled=true
-Terminal=false
