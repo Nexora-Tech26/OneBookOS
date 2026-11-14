@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OneBookOS Desktop Shell Alpha
+Comment=Start dock and Dynamic Hub overlay
+Exec=/usr/local/bin/obos-shell
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+Terminal=false
