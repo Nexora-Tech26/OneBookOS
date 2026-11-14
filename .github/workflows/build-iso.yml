@@ -12,7 +12,7 @@ on:
       - '.github/workflows/build-iso.yml'
 
 concurrency:
-  group: obos-iso-main
+  group: onebookos-gnome-0-2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
