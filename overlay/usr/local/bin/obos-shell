@@ -152,7 +152,8 @@ class Shell:
         self.current_apps.get_style_context().add_class("obos-muted")
         self.music.get_style_context().add_class("obos-muted")
         self.actions=Gtk.Box(spacing=8)
-        timer=Gtk.Button(label="⏱ 5 min timer")
+        timer=Gtk.Button(label="⏱ Start 5m timer")
+        self.timer_button=timer
         timer.get_style_context().add_class("obos-hub-action")
         timer.connect("clicked", self.toggle_timer)
         self.actions.pack_start(timer,False,False,0)
@@ -239,6 +240,19 @@ class Shell:
     def tick(self):
         now=datetime.datetime.now()
         self.clock.set_text(now.strftime("%H:%M\n%d.%m.%Y"))
+        if self.timer_end:
+            remaining=max(0,int(self.timer_end-time.monotonic()))
+            if remaining <= 0:
+                self.timer_end=0.0
+                self.timer_button.set_label("⏱ Start 5m timer")
+                self.compact.set_text("⏱ Timer finished")
+            else:
+                timer_display=f"{remaining//60:02d}:{remaining%60:02d}"
+                self.timer_button.set_label("⏱ "+timer_display+" (stop)")
+                self.compact.set_text("⏱ "+timer_display)
+        else:
+            self.timer_button.set_label("⏱ Start 5m timer")
+            self.compact.set_text("●  OneBookOS  ●")
         if self.expanded and time.monotonic()-self.last_hover>.6:
             display=Gdk.Display.get_default()
             seat=display.get_default_seat()
