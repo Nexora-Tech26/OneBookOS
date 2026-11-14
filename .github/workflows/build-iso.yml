@@ -8,10 +8,11 @@ on:
       - 'build/**'
       - 'overlay/**'
       - 'branding/**'
+      - 'tests/**'
       - '.github/workflows/build-iso.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -27,8 +28,8 @@ jobs:
         run: sudo bash build/install-deps.sh
       - name: Validate build scripts
         run: |
-          bash -n build/install-deps.sh build/build-iso.sh
-          shellcheck build/install-deps.sh build/build-iso.sh
+          bash -n build/install-deps.sh build/build-iso.sh build/smoke-test.sh
+          shellcheck build/install-deps.sh build/build-iso.sh build/smoke-test.sh
           python3 tests/validate.py
       - name: Build Ubuntu Live ISO
         run: sudo bash build/build-iso.sh
@@ -37,6 +38,17 @@ jobs:
           xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -report_el_torito plain
           xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -ls /casper
           (cd dist && sha256sum -c SHA256SUMS)
+      - name: Smoke test boot in QEMU
+        run: bash build/smoke-test.sh dist/OneBookOS-0.1-live-amd64.iso
+      - name: Publish tested alpha to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "alpha-0.2.${{ github.run_number }}" \
+            dist/OneBookOS-0.1-live-amd64.iso dist/SHA256SUMS \
+            --title "OneBookOS Live Alpha 0.2 — build ${{ github.run_number }}" \
+            --prerelease \
+            --notes "Experimental Ubuntu 24.04 Live image. Automated QEMU boot smoke test passed. For VM testing only; not a tested installer."
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
