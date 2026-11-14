@@ -1,25 +1,115 @@
-
-.obos-dock-root {spacing:8px;}
-.obos-dock-side {background-color:rgba(243,247,255,0.94);border:1px solid rgba(255,255,255,0.96);border-radius:21px;padding:6px 10px;spacing:5px;box-shadow:0 8px 30px rgba(16,40,99,0.19);}
-.obos-app {min-width:45px;min-height:45px;border-radius:14px;}
-.obos-app:hover,.obos-app:focus {background-color:rgba(93,137,236,0.18);}
-.obos-app StIcon {icon-size:25px;color:#445a88;}
-.obos-start {min-width:52px;min-height:55px;background-gradient-direction:diagonal;background-gradient-start:#67aff8;background-gradient-end:#8766e7;border-radius:17px;border:1px solid rgba(255,255,255,0.34);box-shadow:0 6px 16px rgba(105,119,215,.42);}
-.obos-start:hover {background-gradient-start:#88c9ff;background-gradient-end:#9b83fa;}
-.obos-start StIcon {icon-size:29px;}
-.obos-clock-box {padding:3px 13px 3px 10px;}
-.obos-time {font-size:13px;font-weight:800;color:#263553;}
-.obos-date {font-size:10px;color:#7483a2;}
-.obos-notch-shell {background-color:#0e111a;border:1px solid rgba(255,255,255,0.08);border-top:0;border-radius:0 0 22px 22px;padding:8px 17px;box-shadow:0 7px 20px rgba(0,0,0,.25);}
-.obos-notch-compact {spacing:12px;}
-.obos-notch-compact StIcon {icon-size:15px;color:#9fb4f8;}
-.obos-notch-title {font-size:11px;color:#f6f7ff;font-weight:800;}
-.obos-notch-hint {font-size:10px;color:#8f9ab2;}
-.obos-notch-expanded {spacing:16px;padding:7px 7px 9px;}
-.obos-notch-heading {font-size:18px;font-weight:800;color:white;}
-.obos-notch-caption {font-size:11px;color:#a6b0ca;}
-.obos-notch-shortcuts {spacing:9px;}
-.obos-hub-action {min-height:43px;min-width:100px;border-radius:14px;background-color:#272e42;color:#eef3ff;padding:0 12px;spacing:8px;}
-.obos-hub-action:hover {background-color:#384969;}
-.obos-hub-action StIcon {icon-size:17px;color:#a9c6ff;}
-.obos-metrics {font-size:11px;color:#aeb9d1;}
+/* OneBookOS 0.2 — glossy One UI-inspired surfaces, true compositor blur via JS */
+.obos-dock-root { spacing:9px; }
+.obos-dock-side {
+  spacing:5px; padding:7px 10px;
+  background-color:rgba(242,247,255,0.79);
+  border:1px solid rgba(255,255,255,0.83);
+  border-radius:23px;
+  box-shadow:0 10px 26px rgba(49,68,122,0.23);
+}
+.obos-icon-button {
+  min-height:48px; min-width:48px;
+  padding:5px;
+  background-color:transparent;
+  border-radius:16px;
+}
+.obos-icon-button:hover,.obos-icon-button:focus {
+  background-color:rgba(115,148,223,0.19);
+}
+.obos-start {
+  min-width:61px; min-height:62px;
+  padding:5px;
+  background-gradient-direction:diagonal;
+  background-gradient-start:#78c5ff; background-gradient-end:#8c78f1;
+  border:2px solid rgba(255,255,255,0.76);
+  border-radius:20px;
+  box-shadow:0 6px 24px rgba(108,126,227,0.4);
+}
+.obos-start:hover,.obos-start-active {
+  background-gradient-start:#92d5ff; background-gradient-end:#a598ff;
+}
+.obos-clock-box {padding:4px 10px 4px 6px;spacing:2px;}
+.obos-time {font-size:13px;font-weight:800;color:#2c3961;}
+.obos-date {font-size:10px;color:#7888aa;}
+.obos-menu {
+  padding:0;
+  background-color:rgba(240,246,255,0.82);
+  border:1px solid rgba(255,255,255,0.84);
+  border-radius:32px;
+  box-shadow:0 18px 70px rgba(45,60,110,0.34);
+}
+.obos-menu-head {padding:27px 31px 12px;spacing:8px;}
+.obos-menu-top {spacing:20px;}
+.obos-menu-brand {font-size:11px;color:#6e83b5;font-weight:900;}
+.obos-menu-version {font-size:10px;color:#9aabc9;}
+.obos-menu-title {font-size:29px;font-weight:900;color:#1d294c;}
+.obos-menu-subtitle {font-size:12px;color:#7181a5;}
+.obos-search {
+  margin-top:14px;
+  min-height:47px;
+  padding:0 14px;
+  background-color:rgba(255,255,255,0.89);
+  color:#2c3761;
+  border:1px solid rgba(187,204,242,0.83);
+  border-radius:17px;
+  box-shadow:0 2px 7px rgba(50,70,130,0.05);
+  selection-background-color:#819ff0;
+}
+.obos-section-header {padding:16px 31px 12px;spacing:20px;}
+.obos-section-title {font-size:15px;font-weight:900;color:#253256;}
+.obos-hint {font-size:10px;font-weight:700;color:#8699bb;}
+.obos-pinned {padding:0 23px;spacing:4px;}
+.obos-tile-button {min-width:89px;border-radius:19px;padding:7px 2px;}
+.obos-tile-button:hover,.obos-tile-button:focus {background-color:rgba(255,255,255,0.81);}
+.obos-pinned-tile {spacing:8px;min-width:85px;min-height:83px;align-items:center;}
+.obos-app-name {font-size:10px;font-weight:700;color:#344469;}
+.obos-categories {padding:0 27px;spacing:5px;}
+.obos-category {
+  font-size:10px;font-weight:700;color:#7183ac;
+  padding:8px 9px;border-radius:16px;
+  background-color:rgba(255,255,255,0.5);
+}
+.obos-category:hover {background-color:rgba(187,203,246,0.48);}
+.obos-category-selected {
+  color:#fff;
+  background-gradient-direction:horizontal;
+  background-gradient-start:#6da3f7; background-gradient-end:#8f81e8;
+}
+.obos-app-scroll {height:228px;margin:15px 25px 13px;}
+.obos-app-list {spacing:4px;}
+.obos-app-row {spacing:6px;}
+.obos-app-tile {width:136px;min-height:82px;border-radius:16px;padding:5px;}
+.obos-app-tile:hover,.obos-app-tile:focus {background-color:rgba(255,255,255,0.88);}
+.obos-grid-tile {align-items:center;spacing:8px;}
+.obos-grid-name {font-size:11px;color:#43557b;font-weight:700;}
+.obos-empty {font-size:12px;padding:25px;color:#7e8dac;}
+.obos-menu-footer {
+  spacing:11px;
+  padding:10px 25px;
+  border-top:1px solid rgba(184,198,228,0.6);
+  background-color:rgba(255,255,255,0.32);
+  border-radius:0 0 32px 32px;
+}
+.obos-footer-label {font-size:10px;letter-spacing:.5px;color:#8597b7;min-width:465px;}
+.obos-menu-footer .obos-icon-button {min-height:40px;min-width:40px;}
+.obos-notch-shell {
+  padding:9px 18px;
+  background-color:rgba(11,14,25,0.95);
+  border:1px solid rgba(255,255,255,0.1);
+  border-top:0;
+  border-radius:0 0 22px 22px;
+  box-shadow:0 8px 22px rgba(0,0,0,.31);
+}
+.obos-notch-compact {spacing:9px;}
+.obos-notch-title {font-size:11px;color:#f4f6ff;font-weight:900;}
+.obos-notch-hint {font-size:10px;color:#93a7d2;}
+.obos-notch-expanded {spacing:16px;padding:7px 5px 9px;}
+.obos-notch-heading {font-size:20px;font-weight:900;color:white;}
+.obos-notch-caption {font-size:11px;color:#aeb9d3;}
+.obos-notch-shortcuts {spacing:12px;}
+.obos-hub-action {
+  background-color:rgba(72,86,117,0.52);
+  border-radius:17px;padding:9px;
+  min-height:54px;min-width:65px;
+}
+.obos-hub-action:hover {background-color:rgba(112,135,188,0.62);}
