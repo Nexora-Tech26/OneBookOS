@@ -39,26 +39,26 @@ jobs:
         run: sudo bash build/build-iso.sh
       - name: Verify ISO and checksum
         run: |
-          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -report_el_torito plain
-          xorriso -indev dist/OneBookOS-0.1-live-amd64.iso -ls /casper
+          xorriso -indev dist/OneBookOS-0.2-gnome-live-amd64.iso -report_el_torito plain
+          xorriso -indev dist/OneBookOS-0.2-gnome-live-amd64.iso -ls /casper
           (cd dist && sha256sum -c SHA256SUMS)
       - name: Smoke test boot in QEMU
-        run: bash build/smoke-test.sh dist/OneBookOS-0.1-live-amd64.iso
+        run: bash build/smoke-test.sh dist/OneBookOS-0.2-gnome-live-amd64.iso
       - name: Publish tested alpha to GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "alpha-0.2.${{ github.run_number }}" \
-            dist/OneBookOS-0.1-live-amd64.iso dist/SHA256SUMS \
-            --title "OneBookOS Live Alpha 0.2 — build ${{ github.run_number }}" \
+          gh release create "alpha-0.2-gnome.${{ github.run_number }}" \
+            dist/OneBookOS-0.2-gnome-live-amd64.iso dist/SHA256SUMS \
+            --title "OneBookOS 0.2 GNOME Alpha — build ${{ github.run_number }}" \
             --prerelease \
-            --notes "Experimental Ubuntu 24.04 Live image. Automated QEMU boot smoke test passed. For VM testing only; not a tested installer."
+            --notes "Experimental Ubuntu 24.04 Live image. Automated GNOME desktop and OneBook shell extension boot test passed. For VM testing only; not a tested installer."
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: OneBookOS-0.1-live-amd64
           path: |
-            dist/OneBookOS-0.1-live-amd64.iso
+            dist/OneBookOS-0.2-gnome-live-amd64.iso
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 7
