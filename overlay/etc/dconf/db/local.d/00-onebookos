@@ -1,0 +1,12 @@
+[org/gnome/shell]
+enabled-extensions=['onebookos@nexora.tech']
+disable-user-extensions=false
+
+[org/gnome/desktop/interface]
+color-scheme='prefer-light'
+icon-theme='Yaru'
+enable-animations=true
+
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
+picture-uri-dark='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
