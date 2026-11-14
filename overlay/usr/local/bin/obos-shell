@@ -15,6 +15,11 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
+try:
+    gi.require_version('Wnck', '3.0')
+    from gi.repository import Wnck
+except (ValueError, ImportError):
+    Wnck = None
 
 CSS = b"""
 window.obos-dock {background:transparent;}
@@ -75,6 +80,7 @@ class Shell:
         self.expanded = False
         self.last_hover = 0.0
         self.open_menu = False
+        self.timer_end = 0.0
         self.dock = Gtk.Window(type=Gtk.WindowType.POPUP)
         self.notch = Gtk.Window(type=Gtk.WindowType.POPUP)
         self.menu = Gtk.Window(type=Gtk.WindowType.POPUP)
@@ -142,8 +148,14 @@ class Shell:
         self.status=Gtk.Label(label="System activity")
         self.status.get_style_context().add_class("obos-muted")
         self.music=Gtk.Label(label="")
+        self.current_apps=Gtk.Label(label="")
+        self.current_apps.get_style_context().add_class("obos-muted")
         self.music.get_style_context().add_class("obos-muted")
         self.actions=Gtk.Box(spacing=8)
+        timer=Gtk.Button(label="⏱ 5 min timer")
+        timer.get_style_context().add_class("obos-hub-action")
+        timer.connect("clicked", self.toggle_timer)
+        self.actions.pack_start(timer,False,False,0)
         for label,cmd in [("Volume",["pavucontrol"]),("Network",["nm-connection-editor"]),("Devices",["/usr/local/bin/obos-device-center"])]:
             self.actions.pack_start(self.make_button(label,cmd,"obos-hub-action"),True,True,0)
         self.panel.connect("enter-notify-event",self.hover)
@@ -151,6 +163,10 @@ class Shell:
         self.notch.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.notch.connect("enter-notify-event",self.hover)
         self.notch.connect("leave-notify-event",self.leave)
+
+    def toggle_timer(self,*_):
+        self.timer_end = (time.monotonic()+300) if not self.timer_end else 0.0
+        self.refresh_info()
 
     def hover(self,*_):
         self.last_hover=time.monotonic()
@@ -168,7 +184,7 @@ class Shell:
             self.compact.hide()
             self.panel.get_style_context().remove_class("obos-notch")
             self.panel.get_style_context().add_class("obos-notch-expanded")
-            for widget in (self.title,self.status,self.music,self.actions):
+            for widget in (self.title,self.status,self.music,self.current_apps,self.actions):
                 self.panel.pack_start(widget,False,False,0)
                 widget.show_all()
         else:
@@ -240,6 +256,16 @@ class Shell:
         music=run_output(["playerctl","metadata","--format","{{artist}} — {{title}}"]) if shutil.which("playerctl") else ""
         self.music.set_text("♫  "+music[:45] if music else "No active media")
         self.status.set_text(memory_text()+"  ·  "+battery_text()+"  ·  Volume "+level)
+        try:
+            screen=Wnck.Screen.get_default() if Wnck is not None else None
+            if screen is not None:
+                screen.force_update()
+                mini=[w.get_name() for w in screen.get_windows() if w.is_minimized() and not w.is_skip_tasklist()]
+                self.current_apps.set_text("Minimized: " + ", ".join(mini[:3])[:60] if mini else "No minimized applications")
+            else:
+                self.current_apps.set_text("App activity unavailable")
+        except (AttributeError, RuntimeError):
+            self.current_apps.set_text("App activity unavailable")
         return True
 
 if __name__ == "__main__":
