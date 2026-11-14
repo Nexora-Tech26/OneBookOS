@@ -1,0 +1,10 @@
+{
+  "uuid": "onebookos@nexora.tech",
+  "name": "OneBookOS 0.2 Desktop",
+  "description": "OneBookOS Start dock and Dynamic Hub for GNOME Shell 46",
+  "shell-version": [
+    "46"
+  ],
+  "version": 2,
+  "url": "https://github.com/Nexora-Tech26/OneBookOS"
+}
