@@ -11,6 +11,10 @@ on:
       - 'tests/**'
       - '.github/workflows/build-iso.yml'
 
+concurrency:
+  group: obos-iso-main
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
