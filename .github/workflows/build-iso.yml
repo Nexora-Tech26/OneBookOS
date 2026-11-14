@@ -35,6 +35,7 @@ jobs:
           bash -n build/install-deps.sh build/build-iso.sh build/smoke-test.sh
           shellcheck build/install-deps.sh build/build-iso.sh build/smoke-test.sh
           python3 tests/validate.py
+          node --check overlay/usr/share/gnome-shell/extensions/onebookos@nexora.tech/extension.js
       - name: Build Ubuntu Live ISO
         run: sudo bash build/build-iso.sh
       - name: Verify ISO and checksum
