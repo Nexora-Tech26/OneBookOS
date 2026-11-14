@@ -41,7 +41,9 @@ log "Install kernel, Casper, XFCE and system services"
 chroot "$FS" apt-get update
 chroot "$FS" apt-get install -y --no-install-recommends \
  ubuntu-minimal ubuntu-standard linux-generic casper initramfs-tools \
- systemd-sysv dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal \
+ systemd-sysv dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-session xfce4-terminal \
+ xserver-xorg-core xserver-xorg-input-all xserver-xorg-video-all \
+ xinit xauth x11-xserver-utils x11-utils \
  network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber pulseaudio-utils playerctl \
  alsa-utils pavucontrol udisks2 gvfs gvfs-backends \
  xdg-utils fonts-noto-core fonts-noto-color-emoji papirus-icon-theme \
@@ -72,7 +74,16 @@ chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center"
 test -f "$FS/usr/share/initramfs-tools/scripts/casper" || { echo 'Missing casper initramfs hook' >&2; exit 1; }
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 printf 'LANG=en_US.UTF-8\n' > "$FS/etc/default/locale"
-chroot "$FS" systemctl enable NetworkManager lightdm bluetooth obos-smoke.service || true
+# Boot directly to LightDM and the autologged-in XFCE session.
+chroot "$FS" systemctl set-default graphical.target
+chroot "$FS" systemctl enable lightdm NetworkManager
+chroot "$FS" systemctl enable obos-smoke.service obos-gui-smoke.service
+# Fail the build if fundamental graphics binaries/session descriptors are missing.
+for required in /usr/bin/Xorg /usr/bin/xinit /usr/bin/xauth /usr/bin/startxfce4 /usr/bin/xset; do
+  test -x "$FS$required" || { echo "Missing graphics binary: $required" >&2; exit 1; }
+done
+test -f "$FS/usr/share/xsessions/xfce.desktop" || { echo "Missing XFCE session" >&2; exit 1; }
+chroot "$FS" /usr/bin/python3 -m py_compile /usr/local/bin/obos-shell /usr/local/bin/obos-welcome /usr/local/bin/obos-device-center
 KVER="$(find "$FS/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
 test -n "$KVER"
 chroot "$FS" update-initramfs -u -k "$KVER"
