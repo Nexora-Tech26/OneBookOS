@@ -48,7 +48,7 @@ chroot "$FS" apt-get install -y --no-install-recommends \
  xfce4-notifyd xfce4-power-manager mousepad ristretto atril \
  policykit-1-gnome sudo locales ca-certificates curl wget \
  pciutils usbutils lshw fwupd ubuntu-drivers-common mesa-utils \
- linux-firmware python3 python3-gi gir1.2-gtk-3.0 dmidecode
+ linux-firmware python3 python3-gi gir1.2-gtk-3.0 gir1.2-wnck-3.0 dmidecode
 rsync -a "$ROOT/overlay/" "$FS/"
 install -Dm644 "$ROOT/branding/wallpaper.svg" "$FS/usr/share/backgrounds/onebookos/wallpaper.svg"
 cat > "$FS/etc/casper.conf" <<EOF
