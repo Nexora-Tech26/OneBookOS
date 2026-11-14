@@ -42,7 +42,7 @@ chroot "$FS" apt-get update
 chroot "$FS" apt-get install -y --no-install-recommends \
  ubuntu-minimal ubuntu-standard linux-generic casper initramfs-tools \
  systemd-sysv dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal \
- network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber \
+ network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber pulseaudio-utils playerctl \
  alsa-utils pavucontrol udisks2 gvfs gvfs-backends \
  xdg-utils fonts-noto-core fonts-noto-color-emoji papirus-icon-theme \
  xfce4-notifyd xfce4-power-manager mousepad ristretto atril \
@@ -67,13 +67,16 @@ ID_LIKE=debian
 UBUNTU_CODENAME=noble
 HOME_URL="https://github.com/Nexora-Tech26/OneBookOS"
 EOF
-chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center"
+chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center" "$FS/usr/local/bin/obos-shell"
+# Confirm the Casper scripts are present before making a boot image.
+test -f "$FS/usr/share/initramfs-tools/scripts/casper" || { echo 'Missing casper initramfs hook' >&2; exit 1; }
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 printf 'LANG=en_US.UTF-8\n' > "$FS/etc/default/locale"
-chroot "$FS" systemctl enable NetworkManager lightdm bluetooth || true
+chroot "$FS" systemctl enable NetworkManager lightdm bluetooth obos-smoke.service || true
 KVER="$(find "$FS/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
 test -n "$KVER"
 chroot "$FS" update-initramfs -u -k "$KVER"
+test -s "$FS/boot/initrd.img-$KVER" || { echo "Missing initramfs" >&2; exit 1; }
 log "Prepare Casper filesystem"
 chroot "$FS" apt-get clean
 rm -f "$FS/etc/resolv.conf"
