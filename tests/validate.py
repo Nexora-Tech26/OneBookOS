@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static validation for OBOS desktop executables and branding."""
 import ast
+import json
 from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
@@ -22,6 +23,14 @@ for file in executables:
     else:
         raise SystemExit(f"Unknown executable interpreter: {file}")
 
+extension_root = root / "overlay/usr/share/gnome-shell/extensions/onebookos@nexora.tech"
+metadata = json.loads((extension_root / "metadata.json").read_text(encoding="utf-8"))
+assert metadata["uuid"] == "onebookos@nexora.tech"
+assert "46" in metadata["shell-version"]
+assert (extension_root / "extension.js").is_file()
+assert (extension_root / "stylesheet.css").is_file()
+assert (extension_root / "icons/onebook.svg").is_file()
+ET.parse(extension_root / "icons/onebook.svg")
 for file in sorted((root / "branding").glob("*.svg")):
     ET.parse(file)
     print(f"SVG OK: {file.relative_to(root)}")
