@@ -1,0 +1,247 @@
+#!/usr/bin/python3
+"""OneBookOS Desktop Alpha shell overlay for XFCE/X11.
+
+An original OBOS prototype, not an implementation of proprietary Samsung UI.
+XFCE handles window management; this process provides the Start dock and
+top-edge activity hub. No shell privileges or background command execution.
+"""
+import datetime
+import os
+import pathlib
+import shutil
+import subprocess
+import time
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gtk, Gdk, GLib
+
+CSS = b"""
+window.obos-dock {background:transparent;}
+.obos-tray {background:rgba(245,248,255,0.92);border-radius:24px;border:1px solid rgba(105,145,200,0.28);padding:7px 12px;}
+.obos-start {background:linear-gradient(135deg,#529fff,#8668e9);border-radius:15px;color:white;font-weight:800;font-size:18px;min-width:47px;min-height:42px;}
+.obos-icon {background:transparent;border-radius:13px;min-width:42px;min-height:42px;font-size:17px;}
+.obos-icon:hover {background:rgba(95,147,233,0.16);}
+.obos-clock {color:#2a3856;font-weight:700;font-size:12px;}
+.obos-notch {background:#101219;color:white;border-radius:0 0 18px 18px;padding:4px 12px;}
+.obos-notch-expanded {background:#101219;color:white;border-radius:0 0 24px 24px;padding:12px 20px;}
+.obos-notch-text {color:white;font-size:12px;}
+.obos-muted {color:#a1a8bd;font-size:11px;}
+.obos-hub-action {background:#333848;color:white;border-radius:13px;padding:9px 14px;}
+.obos-start-menu {background:rgba(247,250,255,0.98);border-radius:22px;border:1px solid #cbd8f1;padding:17px;}
+.obos-heading {color:#273a65;font-weight:800;font-size:18px;}
+"""
+style = Gtk.CssProvider()
+style.load_from_data(CSS)
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+def launch(command):
+    try:
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        pass
+
+def run_output(command):
+    try:
+        return subprocess.run(command, capture_output=True, text=True, timeout=1, check=False).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+def memory_text():
+    try:
+        lines = pathlib.Path("/proc/meminfo").read_text().splitlines()
+        vals = {k: int(v.split()[0]) for k,v in (line.split(":",1) for line in lines)}
+        used = vals["MemTotal"] - vals["MemAvailable"]
+        return f"RAM {used/1024/1024:.1f}/{vals['MemTotal']/1024/1024:.1f} GB"
+    except (OSError, KeyError, ValueError):
+        return "RAM unavailable"
+
+def battery_text():
+    base = pathlib.Path("/sys/class/power_supply")
+    try:
+        for b in base.glob("BAT*"):
+            pct=(b/"capacity").read_text().strip()
+            return "Battery " + pct + "%"
+    except OSError:
+        pass
+    return "AC / Desktop"
+
+def screen_size():
+    s = Gdk.Screen.get_default()
+    return s.get_width(), s.get_height()
+
+class Shell:
+    def __init__(self):
+        self.expanded = False
+        self.last_hover = 0.0
+        self.open_menu = False
+        self.dock = Gtk.Window(type=Gtk.WindowType.POPUP)
+        self.notch = Gtk.Window(type=Gtk.WindowType.POPUP)
+        self.menu = Gtk.Window(type=Gtk.WindowType.POPUP)
+        for w in (self.dock, self.notch, self.menu):
+            w.set_decorated(False)
+            w.set_keep_above(True)
+            w.set_skip_taskbar_hint(True)
+            w.set_skip_pager_hint(True)
+            w.set_app_paintable(True)
+            visual = w.get_screen().get_rgba_visual()
+            if visual: w.set_visual(visual)
+        self.dock.get_style_context().add_class("obos-dock")
+        self.notch.get_style_context().add_class("obos-dock")
+        self.menu.get_style_context().add_class("obos-dock")
+        self.build_dock()
+        self.build_notch()
+        self.build_menu()
+        self.dock.show_all()
+        self.notch.show_all()
+        self.menu.hide()
+        GLib.timeout_add(250, self.tick)
+        GLib.timeout_add(3500, self.refresh_info)
+        self.reposition()
+
+    def make_button(self, text, cmd, css="obos-icon"):
+        b = Gtk.Button(label=text)
+        b.set_relief(Gtk.ReliefStyle.NONE)
+        b.get_style_context().add_class(css)
+        b.connect("clicked",lambda *_: launch(cmd))
+        return b
+
+    def build_dock(self):
+        outer=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=9)
+        left=Gtk.Box(spacing=5)
+        left.get_style_context().add_class("obos-tray")
+        left.pack_start(self.make_button("▣",["thunar"]),False,False,0)
+        left.pack_start(self.make_button("⌘",["xfce4-terminal"]),False,False,0)
+        left.pack_start(self.make_button("◎",["xfce4-appfinder"]),False,False,0)
+        left.pack_start(self.make_button("⚙",["xfce4-settings-manager"]),False,False,0)
+        outer.pack_start(left,False,False,0)
+        start=Gtk.Button(label="◈")
+        start.get_style_context().add_class("obos-start")
+        start.connect("clicked",self.toggle_menu)
+        outer.pack_start(start,False,False,0)
+        right=Gtk.Box(spacing=5)
+        right.get_style_context().add_class("obos-tray")
+        right.pack_start(self.make_button("▤",["mousepad"]),False,False,0)
+        right.pack_start(self.make_button("▧",["/usr/local/bin/obos-device-center"]),False,False,0)
+        right.pack_start(self.make_button("♫",["pavucontrol"]),False,False,0)
+        self.clock=Gtk.Label()
+        self.clock.get_style_context().add_class("obos-clock")
+        right.pack_start(self.clock,False,False,8)
+        outer.pack_start(right,False,False,0)
+        self.dock.add(outer)
+
+    def build_notch(self):
+        self.panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=7)
+        self.panel.get_style_context().add_class("obos-notch")
+        self.notch.add(self.panel)
+        self.compact=Gtk.Label(label="●  OneBookOS  ●")
+        self.compact.get_style_context().add_class("obos-notch-text")
+        self.panel.pack_start(self.compact,False,False,0)
+        self.title=Gtk.Label(label="Dynamic Hub")
+        self.title.get_style_context().add_class("obos-notch-text")
+        self.status=Gtk.Label(label="System activity")
+        self.status.get_style_context().add_class("obos-muted")
+        self.music=Gtk.Label(label="")
+        self.music.get_style_context().add_class("obos-muted")
+        self.actions=Gtk.Box(spacing=8)
+        for label,cmd in [("Volume",["pavucontrol"]),("Network",["nm-connection-editor"]),("Devices",["/usr/local/bin/obos-device-center"])]:
+            self.actions.pack_start(self.make_button(label,cmd,"obos-hub-action"),True,True,0)
+        self.panel.connect("enter-notify-event",self.hover)
+        self.panel.connect("leave-notify-event",self.leave)
+        self.notch.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.notch.connect("enter-notify-event",self.hover)
+        self.notch.connect("leave-notify-event",self.leave)
+
+    def hover(self,*_):
+        self.last_hover=time.monotonic()
+        self.set_expanded(True)
+        return False
+
+    def leave(self,*_):
+        self.last_hover=time.monotonic()-0.4
+        return False
+
+    def set_expanded(self, value):
+        if self.expanded == value:return
+        self.expanded=value
+        if value:
+            self.compact.hide()
+            self.panel.get_style_context().remove_class("obos-notch")
+            self.panel.get_style_context().add_class("obos-notch-expanded")
+            for widget in (self.title,self.status,self.music,self.actions):
+                self.panel.pack_start(widget,False,False,0)
+                widget.show_all()
+        else:
+            for widget in (self.title,self.status,self.music,self.actions):
+                self.panel.remove(widget)
+            self.compact.show()
+            self.panel.get_style_context().remove_class("obos-notch-expanded")
+            self.panel.get_style_context().add_class("obos-notch")
+        self.reposition()
+
+    def build_menu(self):
+        body=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=9)
+        body.get_style_context().add_class("obos-start-menu")
+        body.pack_start(Gtk.Label(label="OneBookOS · Start"),False,False,4)
+        for label,cmd in [("Files",["thunar"]),("Terminal",["xfce4-terminal"]),("Applications",["xfce4-appfinder"]),("Settings",["xfce4-settings-manager"]),("Device Center",["/usr/local/bin/obos-device-center"]),("Welcome",["/usr/local/bin/obos-welcome"])]:
+            b=self.make_button(label,cmd)
+            b.connect("clicked",lambda *_: self.hide_menu())
+            body.pack_start(b,False,False,0)
+        self.menu.add(body)
+
+    def toggle_menu(self,*_):
+        if self.open_menu:self.hide_menu()
+        else:
+            self.open_menu=True
+            self.menu.show_all()
+            self.reposition()
+
+    def hide_menu(self):
+        self.open_menu=False
+        self.menu.hide()
+
+    def reposition(self):
+        w,h=screen_size()
+        self.dock.resize(1,1)
+        self.dock.move(max(0,(w-self.dock.get_size()[0])//2),max(0,h-67))
+        notch_width = 320 if self.expanded else 154
+        self.notch.set_size_request(notch_width,-1)
+        self.notch.resize(notch_width,1)
+        self.notch.move(max(0,(w-notch_width)//2),0)
+        if self.open_menu:
+            self.menu.move(max(0,(w-350)//2),max(0,h-475))
+        GLib.idle_add(self.center_dock)
+
+    def center_dock(self):
+        w,h=screen_size()
+        dw,dh=self.dock.get_size()
+        self.dock.move(max(0,(w-dw)//2),max(0,h-dh-8))
+        nw,nh=self.notch.get_size()
+        self.notch.move(max(0,(w-nw)//2),0)
+        return False
+
+    def tick(self):
+        now=datetime.datetime.now()
+        self.clock.set_text(now.strftime("%H:%M\n%d.%m.%Y"))
+        if self.expanded and time.monotonic()-self.last_hover>.6:
+            display=Gdk.Display.get_default()
+            seat=display.get_default_seat()
+            pointer=seat.get_pointer()
+            _,px,py=pointer.get_position()
+            x,y=self.notch.get_position()
+            width,height=self.notch.get_size()
+            if not(x<=px<=x+width and y<=py<=y+height):
+                self.set_expanded(False)
+        return True
+
+    def refresh_info(self):
+        volume=run_output(["pactl","get-sink-volume","@DEFAULT_SINK@"]) if shutil.which("pactl") else ""
+        level=volume.split("%",1)[0].split()[-1]+"%" if "%" in volume else "unknown"
+        music=run_output(["playerctl","metadata","--format","{{artist}} — {{title}}"]) if shutil.which("playerctl") else ""
+        self.music.set_text("♫  "+music[:45] if music else "No active media")
+        self.status.set_text(memory_text()+"  ·  "+battery_text()+"  ·  Volume "+level)
+        return True
+
+if __name__ == "__main__":
+    Shell()
+    Gtk.main()
