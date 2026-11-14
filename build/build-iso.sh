@@ -37,17 +37,19 @@ for d in dev proc sys; do
  mount --make-rslave "$FS/$d"
  MOUNTS+=("$FS/$d")
 done
-log "Install kernel, Casper, XFCE and system services"
+log "Install kernel, Casper, GNOME 46 and system services"
 chroot "$FS" apt-get update
 chroot "$FS" apt-get install -y --no-install-recommends \
  ubuntu-minimal ubuntu-standard linux-generic casper initramfs-tools \
- systemd-sysv dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-session xfce4-terminal \
+ systemd-sysv dbus-x11 gdm3 gnome-shell gnome-session ubuntu-session \
+ gnome-control-center gnome-terminal nautilus gnome-text-editor gnome-calculator \
+ gnome-system-monitor gnome-software gnome-settings-daemon \
  xserver-xorg-core xserver-xorg-input-all xserver-xorg-video-all \
- xinit xauth x11-xserver-utils x11-utils \
+ xinit xauth x11-xserver-utils x11-utils dconf-cli \
  network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber pulseaudio-utils playerctl \
  alsa-utils pavucontrol udisks2 gvfs gvfs-backends \
  xdg-utils fonts-noto-core fonts-noto-color-emoji papirus-icon-theme \
- xfce4-notifyd xfce4-power-manager mousepad ristretto atril \
+ evince eog gnome-themes-extra adwaita-icon-theme-full \
  policykit-1-gnome sudo locales ca-certificates curl wget \
  pciutils usbutils lshw fwupd ubuntu-drivers-common mesa-utils \
  linux-firmware python3 python3-gi gir1.2-gtk-3.0 gir1.2-wnck-3.0 dmidecode
@@ -61,29 +63,31 @@ export BUILD_SYSTEM="Ubuntu"
 export FLAVOUR="OneBookOS"
 EOF
 cat > "$FS/etc/os-release" <<EOF
-PRETTY_NAME="OneBookOS Live Alpha 0.1 (Ubuntu 24.04 LTS)"
+PRETTY_NAME="OneBookOS 0.2 GNOME Alpha (Ubuntu 24.04 LTS)"
 NAME="OneBookOS"
-VERSION_ID="0.1"
+VERSION_ID="0.2"
 ID=ubuntu
 ID_LIKE=debian
 UBUNTU_CODENAME=noble
 HOME_URL="https://github.com/Nexora-Tech26/OneBookOS"
 EOF
-chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center" "$FS/usr/local/bin/obos-shell" "$FS/usr/local/bin/obos-gui-smoke"
+chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center" "$FS/usr/local/bin/obos-gui-smoke"
 # Confirm the Casper scripts are present before making a boot image.
 test -f "$FS/usr/share/initramfs-tools/scripts/casper" || { echo 'Missing casper initramfs hook' >&2; exit 1; }
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 printf 'LANG=en_US.UTF-8\n' > "$FS/etc/default/locale"
-# Boot directly to LightDM and the autologged-in XFCE session.
+# Boot directly into GNOME Shell through GDM; no XFCE or legacy overlay.
 chroot "$FS" systemctl set-default graphical.target
-chroot "$FS" systemctl enable lightdm NetworkManager
+chroot "$FS" systemctl enable gdm3 NetworkManager
 chroot "$FS" systemctl enable obos-smoke.service obos-gui-smoke.service
-# Fail the build if fundamental graphics binaries/session descriptors are missing.
-for required in /usr/bin/Xorg /usr/bin/xinit /usr/bin/xauth /usr/bin/startxfce4 /usr/bin/xset; do
-  test -x "$FS$required" || { echo "Missing graphics binary: $required" >&2; exit 1; }
+chroot "$FS" dconf update
+# Check critical runtime pieces before making a 1+ GB ISO.
+for required in /usr/sbin/gdm3 /usr/bin/gnome-shell /usr/bin/gnome-session /usr/bin/Xorg /usr/bin/xauth; do
+  test -x "$FS$required" || { echo "Missing GNOME binary: $required" >&2; exit 1; }
 done
-test -f "$FS/usr/share/xsessions/xfce.desktop" || { echo "Missing XFCE session" >&2; exit 1; }
-chroot "$FS" /usr/bin/python3 -m py_compile /usr/local/bin/obos-shell /usr/local/bin/obos-welcome /usr/local/bin/obos-device-center
+test -f "$FS/usr/share/gnome-shell/extensions/onebookos@nexora.tech/extension.js" || { echo "Missing GNOME shell extension" >&2; exit 1; }
+test -f "$FS/usr/share/gnome-shell/extensions/onebookos@nexora.tech/metadata.json" || { echo "Missing extension metadata" >&2; exit 1; }
+chroot "$FS" /usr/bin/python3 -m py_compile /usr/local/bin/obos-welcome /usr/local/bin/obos-device-center
 KVER="$(find "$FS/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
 test -n "$KVER"
 chroot "$FS" update-initramfs -u -k "$KVER"
@@ -114,9 +118,9 @@ done
 chmod 1777 "$FS/tmp"
 mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp xz -b 1M -noappend
 cp "$ROOT/build/grub.cfg" "$CD/boot/grub/grub.cfg"
-echo "OneBookOS Live Alpha 0.1 based on Ubuntu 24.04" > "$CD/README.txt"
+echo "OneBookOS 0.2 GNOME Alpha based on Ubuntu 24.04" > "$CD/README.txt"
 (cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum) > "$CD/md5sum.txt"
 log "Build GRUB BIOS+UEFI ISO"
-grub-mkrescue -o "$OUT/OneBookOS-0.1-live-amd64.iso" "$CD" -- -volid ONEBOOKOS
-(cd "$OUT" && sha256sum OneBookOS-0.1-live-amd64.iso > SHA256SUMS)
-log "ISO: $OUT/OneBookOS-0.1-live-amd64.iso"
+grub-mkrescue -o "$OUT/OneBookOS-0.2-gnome-live-amd64.iso" "$CD" -- -volid ONEBOOKOS
+(cd "$OUT" && sha256sum OneBookOS-0.2-gnome-live-amd64.iso > SHA256SUMS)
+log "ISO: $OUT/OneBookOS-0.2-gnome-live-amd64.iso"
