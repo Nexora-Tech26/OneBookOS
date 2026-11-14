@@ -189,7 +189,7 @@ class Shell:
                 self.panel.pack_start(widget,False,False,0)
                 widget.show_all()
         else:
-            for widget in (self.title,self.status,self.music,self.actions):
+            for widget in (self.title,self.status,self.music,self.current_apps,self.actions):
                 self.panel.remove(widget)
             self.compact.show()
             self.panel.get_style_context().remove_class("obos-notch-expanded")
