@@ -1,0 +1,25 @@
+
+.obos-dock-root {spacing:8px;}
+.obos-dock-side {background-color:rgba(243,247,255,0.94);border:1px solid rgba(255,255,255,0.96);border-radius:21px;padding:6px 10px;spacing:5px;box-shadow:0 8px 30px rgba(16,40,99,0.19);}
+.obos-app {min-width:45px;min-height:45px;border-radius:14px;}
+.obos-app:hover,.obos-app:focus {background-color:rgba(93,137,236,0.18);}
+.obos-app StIcon {icon-size:25px;color:#445a88;}
+.obos-start {min-width:52px;min-height:55px;background-gradient-direction:diagonal;background-gradient-start:#67aff8;background-gradient-end:#8766e7;border-radius:17px;border:1px solid rgba(255,255,255,0.34);box-shadow:0 6px 16px rgba(105,119,215,.42);}
+.obos-start:hover {background-gradient-start:#88c9ff;background-gradient-end:#9b83fa;}
+.obos-start StIcon {icon-size:29px;}
+.obos-clock-box {padding:3px 13px 3px 10px;}
+.obos-time {font-size:13px;font-weight:800;color:#263553;}
+.obos-date {font-size:10px;color:#7483a2;}
+.obos-notch-shell {background-color:#0e111a;border:1px solid rgba(255,255,255,0.08);border-top:0;border-radius:0 0 22px 22px;padding:8px 17px;box-shadow:0 7px 20px rgba(0,0,0,.25);}
+.obos-notch-compact {spacing:12px;}
+.obos-notch-compact StIcon {icon-size:15px;color:#9fb4f8;}
+.obos-notch-title {font-size:11px;color:#f6f7ff;font-weight:800;}
+.obos-notch-hint {font-size:10px;color:#8f9ab2;}
+.obos-notch-expanded {spacing:16px;padding:7px 7px 9px;}
+.obos-notch-heading {font-size:18px;font-weight:800;color:white;}
+.obos-notch-caption {font-size:11px;color:#a6b0ca;}
+.obos-notch-shortcuts {spacing:9px;}
+.obos-hub-action {min-height:43px;min-width:100px;border-radius:14px;background-color:#272e42;color:#eef3ff;padding:0 12px;spacing:8px;}
+.obos-hub-action:hover {background-color:#384969;}
+.obos-hub-action StIcon {icon-size:17px;color:#a9c6ff;}
+.obos-metrics {font-size:11px;color:#aeb9d1;}
