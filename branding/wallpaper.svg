@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fafcff"/><stop offset=".53" stop-color="#d4e6ff"/><stop offset="1" stop-color="#e8dafa"/></linearGradient></defs><rect width="1920" height="1080" fill="url(#g)"/><path d="M0 800 C500 260 960 200 1450 470 S1850 670 1920 410 L1920 1080 L0 1080Z" fill="#a8cfff" opacity=".45"/><text x="90" y="970" fill="#425a97" font-size="50" font-family="sans-serif">OneBookOS</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+ <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+  <stop stop-color="#bfdfff"/><stop offset=".38" stop-color="#d5e4ff"/><stop offset=".73" stop-color="#e7d5fc"/><stop offset="1" stop-color="#ffdef0"/>
+ </linearGradient>
+ <linearGradient id="wave1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6ca6fd"/><stop offset=".48" stop-color="#8e8cfc"/><stop offset="1" stop-color="#c6a6ff"/></linearGradient>
+ <linearGradient id="wave2" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#95c5ff"/><stop offset=".5" stop-color="#bdadff"/><stop offset="1" stop-color="#ffd3ee"/></linearGradient>
+ <radialGradient id="orb"><stop stop-color="#ffffff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1920" height="1080" fill="url(#background)"/>
+<ellipse cx="1510" cy="230" rx="590" ry="360" fill="url(#orb)" opacity=".95"/>
+<path d="M-180 830C180 650 345 280 800 320c356 31 533 398 1130 135l150 560H-180Z" fill="url(#wave1)" opacity=".66"/>
+<path d="M-170 865C280 540 625 800 1020 646c350-138 521-220 1080-64v580H-170Z" fill="url(#wave2)" opacity=".87"/>
+<path d="M-180 1010c438-291 863-210 1130-278 365-93 663 36 1170 10v400H-180Z" fill="#f1f5ff" opacity=".54"/>
+<path d="M100 250C410 110 670 120 930 205" stroke="#fff" stroke-width="6" fill="none" opacity=".23"/>
+</svg>
