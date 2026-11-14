@@ -30,7 +30,12 @@ assert "46" in metadata["shell-version"]
 assert (extension_root / "extension.js").is_file()
 assert (extension_root / "stylesheet.css").is_file()
 assert (extension_root / "icons/onebook.svg").is_file()
-ET.parse(extension_root / "icons/onebook.svg")
+source = (extension_root / "extension.js").read_text(encoding="utf-8")
+assert "_buildMenu()" in source, "Native Start menu is missing"
+assert "Main.overview.showApps()" not in source, "Start must not use GNOME app grid"
+assert "Shell.BlurEffect" in source, "GNOME compositor blur is missing"
+for icon in ["onebook", "files", "settings", "terminal", "store", "calculator", "notes", "monitor", "photos", "controls", "power"]:
+    ET.parse(extension_root / "icons" / f"{icon}.svg")
 for file in sorted((root / "branding").glob("*.svg")):
     ET.parse(file)
     print(f"SVG OK: {file.relative_to(root)}")
