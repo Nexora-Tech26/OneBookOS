@@ -1,6 +1,6 @@
 [Unit]
 Description=OneBookOS boot marker for automated virtual machine testing
-After=multi-user.target
+After=basic.target
 ConditionPathExists=/dev/ttyS0
 
 [Service]
