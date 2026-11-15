@@ -60,7 +60,7 @@ export default class OneBookDesktop extends Extension {
             if (this._startMenu)
                 this._refreshApps();
         });
-        this._refreshRunning();
+        try { this._refreshRunning(); } catch (e) { logError(e); }
         this._clockTick();
         this._timers.push(GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => this._clockTick()));
         this._relayout();
@@ -73,14 +73,11 @@ export default class OneBookDesktop extends Extension {
         this._signals.push([obj, id]);
         return id;
     }
-    _blur(actor, radius = 24) {
-        // GNOME Shell compositor backdrop blur (not an opacity-only imitation).
-        // Falls back to translucent OneBook surfaces when unsupported by renderer.
-        try {
-            actor.add_effect(new Shell.BlurEffect({
-                mode: Shell.BlurMode.BACKGROUND, radius, brightness: 0.94,
-            }));
-        } catch (e) { log('OneBookOS: backdrop blur disabled: ' + e.message); }
+    _blur(_actor, _radius = 24) {
+        // Background compositor blur is temporarily disabled in Alpha 0.2.
+        // A GPU shader effect must not be allowed to crash the entire GNOME
+        // session, especially with QEMU's software-rendered graphics.
+        // The translucent CSS surface remains active.
     }
     _icon(key, size = 26) {
         const filename = this.path + '/icons/' + key + '.svg';
