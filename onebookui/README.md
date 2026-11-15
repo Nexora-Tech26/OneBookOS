@@ -29,3 +29,9 @@ The 12-part master prompt remains the roadmap, not a claim that every feature wo
 With `obos.test=1`, systemd skips greetd (which can compete with `getty@tty1` on the CI virtual console) and starts the **same** OneBook session launcher through `onebook-headless.service`, as user `obos` with its own `RuntimeDirectory`. The test verifies the actual `labwc` process, Wayland socket, custom `onebook-shell` process, shell ready file, and 25 seconds of sustained activity. A failed session prints the real compositor and shell logs to the QEMU serial console.
 
 Normal Live boots still start greetd on VT7, and they have **not** been validated by the headless CI test. Real display output, interaction, and installed-system login need a separate graphical QEMU/hardware test.
+
+## Normal Live boot: automatic graphical desktop
+
+Normal ISO boot uses GRUB's first entry automatically. It runs the real graphical Wayland session from `greetd` on VT7 and its `[initial_session]` auto-login as the ephemeral Live user `obos`. **No username/password prompt is intended for Live mode**. The separate kernel option `obos.test=1` is strictly headless CI diagnostic mode and does not reflect the normal graphical user experience.
+
+The GitHub pipeline includes an independent `graphical` QEMU mode (`obos.gui-test=1`) that **does not** bypass greetd. It verifies the real compositor, Wayland socket and OneBook Shell running for the auto-logged-in user with a QEMU virtual GPU. This tests process startup only; it is not a substitute for inspecting actual rendered pixels or testing on physical hardware. An installed OneBookOS will require secure account creation and must not retain this Live auto-login.

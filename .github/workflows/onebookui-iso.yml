@@ -44,6 +44,8 @@ jobs:
           (cd dist && sha256sum -c SHA256SUMS-onebookui)
       - name: Boot and verify compositor and shell in QEMU
         run: bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso
+      - name: Boot and verify normal graphical auto-login in QEMU
+        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso graphical
       - name: Upload verified ISO and checksum
         uses: actions/upload-artifact@v4
         with:

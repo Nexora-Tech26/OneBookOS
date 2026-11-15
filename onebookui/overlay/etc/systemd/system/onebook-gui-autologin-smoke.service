@@ -1,0 +1,13 @@
+[Unit]
+Description=Verify OneBookUI graphical Live auto-login in QEMU
+After=greetd.service
+Wants=greetd.service
+ConditionKernelCommandLine=obos.gui-test=1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/onebook-gui-autologin-smoke
+TimeoutStartSec=230
+
+[Install]
+WantedBy=graphical.target

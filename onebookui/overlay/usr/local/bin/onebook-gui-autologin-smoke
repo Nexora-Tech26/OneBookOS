@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Verify the *normal* greetd session, not the special headless test session.
+set -Eeuo pipefail
+printf '%s\n' 'ONEBOOK_GUI_AUTOLOGIN_CHECK_STARTED' > /dev/ttyS0
+USER_ID="$(id -u obos)"
+RUNTIME="/run/user/$USER_ID"
+READY="$RUNTIME/onebook-shell-ready"
+SOCK="$RUNTIME/wayland-0"
+ok=0
+for _ in $(seq 1 160); do
+  if systemctl is-active --quiet greetd.service && \
+     pgrep -u obos -x labwc >/dev/null && \
+     pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
+     test -S "$SOCK" && test -s "$READY"; then
+    ok=1
+    break
+  fi
+  sleep 1
+done
+if test "$ok" -eq 1; then
+  # Keep observing to avoid an accidental success on a crashing session.
+  for _ in $(seq 1 20); do
+    if ! pgrep -u obos -x labwc >/dev/null || \
+       ! pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null || \
+       ! test -S "$SOCK" || ! test -s "$READY"; then
+      ok=0
+      break
+    fi
+    sleep 1
+  done
+fi
+if test "$ok" -eq 1; then
+  echo ONEBOOK_GUI_AUTOLOGIN_OK > /dev/ttyS0
+  exit 0
+fi
+{
+  echo ONEBOOK_GUI_AUTOLOGIN_FAILED
+  echo '--- greetd status ---'
+  systemctl --no-pager -l status greetd.service || true
+  echo '--- greetd journal ---'
+  journalctl -b -u greetd.service --no-pager -n 100 || true
+  echo '--- GUI session and shell logs ---'
+  tail -120 /tmp/onebook-session.log || true
+  tail -120 /tmp/onebook-shell.log || true
+  echo '--- runtime ---'
+  ls -lah "$RUNTIME" || true
+  echo '--- processes ---'
+  pgrep -a -f 'greetd|labwc|onebook-shell|onebook-session' || true
+} > /dev/ttyS0 2>&1
+exit 1

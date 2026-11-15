@@ -79,9 +79,9 @@ EOF
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 echo LANG=en_US.UTF-8 > "$FS/etc/default/locale"
 chroot "$FS" systemctl set-default graphical.target
-chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service
+chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service onebook-gui-autologin-smoke.service
 # The OneBookUI test must run as its own live-user Wayland session. Greetd is only used for non-test Live boots.
-for app in onebook-shell onebook-files onebook-session onebook-gui-smoke;do chmod 755 "$FS/usr/local/bin/$app";done
+for app in onebook-shell onebook-files onebook-session onebook-gui-smoke onebook-gui-autologin-smoke;do chmod 755 "$FS/usr/local/bin/$app";done
 chroot "$FS" python3 -m py_compile /usr/local/bin/onebook-shell /usr/local/bin/onebook-files
 test -f "$FS/usr/share/initramfs-tools/scripts/casper"
 test -f "$FS/usr/share/wayland-sessions/onebookui.desktop"
