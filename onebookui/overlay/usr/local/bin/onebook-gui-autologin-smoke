@@ -2,7 +2,7 @@
 # Verify the *normal* greetd session, not the special headless test session.
 set -Eeuo pipefail
 COMPOSITOR=labwc
-if grep -qE '(^|[[:space:]])obos\\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
   COMPOSITOR=wayfire
 fi
 printf '%s\n' 'ONEBOOK_GUI_AUTOLOGIN_CHECK_STARTED' > /dev/ttyS0

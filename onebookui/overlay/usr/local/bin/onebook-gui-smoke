@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 COMPOSITOR=labwc
-if grep -qE '(^|[[:space:]])obos\\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
   COMPOSITOR=wayfire
 fi
 printf '%s\n' 'ONEBOOK_TEST_SERVICE_STARTED' > /dev/ttyS0

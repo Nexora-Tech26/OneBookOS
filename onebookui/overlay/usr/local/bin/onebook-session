@@ -17,7 +17,7 @@ fi
 # Save actual compositor stderr. The QEMU smoke check prints this on failures.
 {
   printf '[OneBookSession] user=%s runtime=%s backend=%s\n' "$(id -un)" "${XDG_RUNTIME_DIR:-unset}" "${WLR_BACKENDS:-auto}"
-  if grep -qE '(^|[[:space:]])obos\\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+  if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
     compositor=wayfire
   else
     compositor=labwc
