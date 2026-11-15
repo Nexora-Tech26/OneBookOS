@@ -28,7 +28,4 @@ picture-uri='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
 
 [org/gnome/mutter]
 edge-tiling=true
-
-# The GNOME Super-key overview is disabled; Start remains a dedicated OneBookOS panel.
-[org/gnome/mutter]
 overlay-key=''
