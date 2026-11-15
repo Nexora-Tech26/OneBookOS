@@ -7,7 +7,7 @@ favorite-apps=['org.gnome.Nautilus.desktop','org.gnome.Settings.desktop','org.gn
 [org/gnome/desktop/interface]
 color-scheme='prefer-light'
 gtk-theme='Yaru'
-icon-theme='Yaru'
+icon-theme='OneBookOS'
 cursor-theme='Bibata-Modern-Classic'
 cursor-size=24
 enable-animations=true
