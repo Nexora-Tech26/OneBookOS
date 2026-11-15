@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=OneBookUI
+export XDG_SESSION_DESKTOP=onebookui
+export GTK_THEME=Adwaita
+if grep -qw 'obos.test=1' /proc/cmdline;then
+ export WLR_BACKENDS=headless
+ export WLR_HEADLESS_OUTPUTS=1
+ export WLR_RENDERER=pixman
+ export WLR_LIBINPUT_NO_DEVICES=1
+fi
+exec dbus-run-session -- labwc

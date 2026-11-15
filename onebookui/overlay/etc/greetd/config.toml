@@ -1,0 +1,9 @@
+[terminal]
+vt = 1
+# Live ISO only: installer must remove automatic login.
+[initial_session]
+command = "/usr/local/bin/onebook-session"
+user = "obos"
+[default_session]
+command = "agreety --cmd /usr/local/bin/onebook-session"
+user = "greeter"

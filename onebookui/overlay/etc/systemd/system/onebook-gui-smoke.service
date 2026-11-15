@@ -1,0 +1,11 @@
+[Unit]
+Description=OneBookUI independent Wayland QEMU smoke test
+After=greetd.service
+Wants=greetd.service
+ConditionKernelCommandLine=obos.test=1
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/onebook-gui-smoke
+TimeoutStartSec=350
+[Install]
+WantedBy=graphical.target

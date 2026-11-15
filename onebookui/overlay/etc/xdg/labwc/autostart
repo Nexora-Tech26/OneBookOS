@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+swaybg -i /usr/share/backgrounds/onebookos/wallpaper.svg -m fill &
+/usr/local/bin/onebook-shell >> /tmp/onebook-shell.log 2>&1 &

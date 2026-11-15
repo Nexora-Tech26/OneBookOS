@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+OBOS_UID="$(id -u obos)"
+READY="/run/user/$OBOS_UID/onebook-shell-ready"
+ok=0
+for _ in $(seq 1 160);do
+ if pgrep -u obos -x labwc >/dev/null && pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && test -s "$READY" && test -S "/run/user/$OBOS_UID/wayland-0";then ok=1;break;fi
+ sleep 2
+done
+if test "$ok" = 1;then
+ for _ in $(seq 1 35);do
+  if ! pgrep -u obos -x labwc >/dev/null || ! pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null || ! test -S "/run/user/$OBOS_UID/wayland-0";then ok=0;break;fi
+  sleep 1
+ done
+fi
+if test "$ok" = 1;then echo ONEBOOK_WAYLAND_GUI_OK > /dev/ttyS0;exit 0;fi
+echo ONEBOOK_WAYLAND_GUI_FAILED > /dev/ttyS0
+journalctl -b --no-pager -n 120 >> /dev/ttyS0 2>&1 || true
+cat /tmp/onebook-shell.log >> /dev/ttyS0 2>&1 || true
+exit 1
