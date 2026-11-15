@@ -141,3 +141,7 @@
 .notification-banner {background-color:rgba(241,246,255,.95);border:1px solid rgba(255,255,255,.76);border-radius:19px;color:#273859;}
 #panel {background-color:transparent;box-shadow:none;}
 #dash {background-color:transparent;}
+
+.obos-running-apps {spacing:5px;padding-left:7px;border-left:1px solid rgba(125,151,202,.24);}
+.obos-running-button {width:45px;height:46px;border-radius:14px;padding:7px;background-color:rgba(123,149,220,.14);}
+.obos-running-button:hover {background-color:rgba(123,149,220,.27);}
