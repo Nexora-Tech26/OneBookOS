@@ -31,11 +31,26 @@ export default class OneBookDesktop extends Extension {
         this._category = 'All';
         this._searchTerm = '';
         this._expanded = false;
-        this._buildDock();
-        this._buildMenu();
-        this._buildNotch();
-        for (const actor of [this._dock, this._startMenu, this._notch])
-            Main.layoutManager.addChrome(actor, {affectsStruts: false, trackFullscreen: true});
+        // Crash containment: a failing OneBook widget must not hide GNOME's panel.
+        try {
+            this._buildDock();
+            this._buildMenu();
+            this._buildNotch();
+        } catch (error) {
+            logError(error, 'OneBookOS: desktop initialization failed, reverting to GNOME');
+            this._revertToGnome();
+            return;
+        }
+        // Register our actors before hiding the stock panel. If any part fails,
+        // restore the stock panel and let the user continue using GNOME.
+        try {
+            for (const actor of [this._dock, this._startMenu, this._notch])
+                Main.layoutManager.addChrome(actor, {affectsStruts: false, trackFullscreen: true});
+        } catch (error) {
+            logError(error, 'OneBookOS: shell chrome registration failed');
+            this._revertToGnome();
+            return;
+        }
         Main.panel.hide();
         this._connect(Main.layoutManager, 'monitors-changed', () => this._relayout());
         for (const actor of [this._dock, this._notch, this._startMenu])
@@ -69,9 +84,33 @@ export default class OneBookDesktop extends Extension {
         catch (e) { logError(e); }
     }
     _connect(obj, name, fn) {
-        const id = obj.connect(name, fn);
+        const guarded = (...args) => {
+            try { return fn(...args); }
+            catch (error) {
+                logError(error, 'OneBookOS callback failed: ' + name);
+                // Never allow a pointer, hover, or clock callback to propagate
+                // an exception into the GNOME Shell event processing loop.
+                return name === 'captured-event' ? Clutter.EVENT_PROPAGATE : undefined;
+            }
+        };
+        const id = obj.connect(name, guarded);
         this._signals.push([obj, id]);
         return id;
+    }
+    _revertToGnome() {
+        try {
+            for (const [obj, id] of this._signals ?? [])
+                try { obj.disconnect(id); } catch {}
+            this._signals = [];
+            for (const actor of [this._startMenu, this._dock, this._notch])
+                try { actor?.destroy(); } catch {}
+            this._startMenu = null;
+            this._dock = null;
+            this._notch = null;
+            Main.panel.show();
+        } catch (error) {
+            logError(error, 'OneBookOS: GNOME fallback encountered an error');
+        }
     }
     _blur(_actor, _radius = 24) {
         // Background compositor blur is temporarily disabled in Alpha 0.2.
@@ -352,9 +391,7 @@ export default class OneBookDesktop extends Extension {
             try { obj.disconnect(id); } catch {}
         }
         this._timers = []; this._signals = [];
-        this._dock?.destroy(); this._startMenu?.destroy(); this._notch?.destroy();
-        this._dock = null; this._startMenu = null; this._notch = null;
-        Main.panel.show();
+        this._revertToGnome();
         try { Gio.File.new_for_path('/tmp/obos-gnome-extension-ready').delete(null); } catch {}
     }
 }
