@@ -113,3 +113,31 @@
   min-height:54px;min-width:65px;
 }
 .obos-hub-action:hover {background-color:rgba(112,135,188,0.62);}
+
+/* OneBookOS shell-wide language: native GNOME menus, OSD, sliders, dialogs. */
+.popup-menu-content,
+.popup-menu-boxpointer,
+.quick-settings,
+.calendar,
+.message-list,
+.modal-dialog,
+.end-session-dialog {
+  background-color:rgba(242,246,255,0.93);
+  color:#273755;
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,0.76);
+  box-shadow:0 10px 34px rgba(56,78,139,0.19);
+}
+.popup-menu-item {padding:10px 16px; border-radius:13px; color:#293a60;}
+.popup-menu-item:focus,.popup-menu-item:hover {background-color:rgba(114,151,237,0.21);}
+.quick-toggle {border-radius:17px; background-color:rgba(218,230,255,0.87);color:#354b78;}
+.quick-toggle:checked {background-color:#668eeb;color:#fff;}
+.quick-toggle:hover {background-color:#c4d8fe;}
+.slider {height:14px; color:#658eeb;}
+.osd-window {background-color:rgba(28,36,61,0.91);border-radius:24px;border:1px solid rgba(207,219,255,0.25);}
+.modal-dialog .modal-dialog-button {border-radius:14px;padding:11px 17px;background-color:#dce8ff;color:#243a6d;}
+.modal-dialog .modal-dialog-button:default {background-color:#658ef0;color:white;}
+.message {border-radius:17px;}
+.notification-banner {background-color:rgba(241,246,255,.95);border:1px solid rgba(255,255,255,.76);border-radius:19px;color:#273859;}
+#panel {background-color:transparent;box-shadow:none;}
+#dash {background-color:transparent;}
