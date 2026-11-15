@@ -17,6 +17,16 @@ fi
 # Save actual compositor stderr. The QEMU smoke check prints this on failures.
 {
   printf '[OneBookSession] user=%s runtime=%s backend=%s\n' "$(id -un)" "${XDG_RUNTIME_DIR:-unset}" "${WLR_BACKENDS:-auto}"
-  printf '[OneBookSession] starting labwc compositor\n'
+  if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+    compositor=wayfire
+  else
+    compositor=labwc
+  fi
+  printf '[OneBookSession] starting %s compositor\n' "$compositor"
 } >> /tmp/onebook-session.log
+if [[ "$compositor" == wayfire ]]; then
+  # Wayfire is experimental: unlike labwc it requires a working EGL/GL path.
+  # Headless software rendering is not assumed to be supported.
+  exec dbus-run-session -- wayfire --config /etc/xdg/wayfire.ini >> /tmp/onebook-session.log 2>&1
+fi
 exec dbus-run-session -- labwc >> /tmp/onebook-session.log 2>&1

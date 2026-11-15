@@ -1,0 +1,29 @@
+name: Stage 02 — Wayland compositor feasibility
+
+on:
+  push:
+    branches: [feature/stage-02-display-engine]
+    paths:
+      - display-engine/**
+      - .github/workflows/stage2-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Ubuntu 24.04 APT dependencies for compositor candidates
+        run: sudo bash display-engine/probe-candidates.sh
+      - name: Upload package-solver output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Stage02-compositor-package-probe
+          path: out/
+          if-no-files-found: warn
+          retention-days: 14

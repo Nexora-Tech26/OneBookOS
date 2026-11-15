@@ -1,0 +1,82 @@
+name: Stage 02 — Display Engine Developer Preview ISO
+
+on:
+  push:
+    branches: [feature/stage-02-display-engine]
+    paths:
+      - display-engine/**
+      - onebookui/**
+      - tests/test_display_engine.py
+      - .github/workflows/stage2-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage2-iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qemu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show available storage
+        run: df -h .
+      - name: Restore Ubuntu base cache
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install ISO and QEMU tooling
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Source-level checks
+        run: |
+          python3 -m unittest discover -s tests -p test_display_engine.py -v
+          python3 -m unittest discover -s tests -p test_foundation.py -v
+          bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-session onebookui/overlay/usr/local/bin/onebook-gui-smoke onebookui/overlay/usr/local/bin/onebook-gui-autologin-smoke
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell
+      - name: Build ISO containing two display-engine choices
+        run: sudo bash display-engine/build-stage2-iso.sh
+      - name: Verify ISO filesystem and checksum
+        run: |
+          xorriso -indev dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso -report_el_torito plain
+          xorriso -indev dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage2)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Labwc headless QEMU smoke
+        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/labwc-headless.log
+      - name: Labwc graphical QEMU smoke with screenshot
+        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso graphical labwc 2>&1 | tee dist/labwc-graphical.log
+      - name: Experimental Wayfire graphical QEMU smoke
+        id: wayfire
+        continue-on-error: true
+        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso graphical wayfire 2>&1 | tee dist/wayfire-graphical.log
+      - name: Display Wayfire result without hiding it
+        if: always()
+        run: |
+          echo "Wayfire graphical smoke outcome: ${{ steps.wayfire.outcome }}"
+          if [[ "${{ steps.wayfire.outcome }}" != success ]]; then
+            echo "::warning::Wayfire was not verified in graphical QEMU; experimental boot choice only."
+          fi
+      - name: Save real screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage02-QEMU-Evidence
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload test ISO (only after mandatory labwc checks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage02-DisplayEngine-ISO
+          path: |
+            dist/OneBookOS-0.1.2-DisplayEngine-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage2
+          if-no-files-found: error
+          retention-days: 7

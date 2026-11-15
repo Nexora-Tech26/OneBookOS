@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+COMPOSITOR=labwc
+if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+  COMPOSITOR=wayfire
+fi
 printf '%s\n' 'ONEBOOK_TEST_SERVICE_STARTED' > /dev/ttyS0
 SOCK='/run/onebookui-smoke/wayland-0'
 READY='/run/onebookui-smoke/onebook-shell-ready'
 ok=0
 # Fail early on compositor crash. A simple boot to the login prompt is NEVER success.
 for _ in $(seq 1 170); do
-  if pgrep -u obos -x labwc >/dev/null && \
+  if pgrep -u obos -x "$COMPOSITOR" >/dev/null && \
      pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
      test -S "$SOCK" && test -s "$READY"; then
     ok=1
@@ -21,7 +25,7 @@ done
 if test "$ok" -eq 1; then
   # Real compositor, socket and shell must remain live, not just start once.
   for _ in $(seq 1 25); do
-    if ! pgrep -u obos -x labwc >/dev/null || \
+    if ! pgrep -u obos -x "$COMPOSITOR" >/dev/null || \
        ! pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null || \
        ! test -S "$SOCK" || ! test -s "$READY"; then
       ok=0

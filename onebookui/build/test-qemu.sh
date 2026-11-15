@@ -6,6 +6,16 @@
 set -Eeuo pipefail
 ISO="${1:?Usage: test-qemu.sh path/to/iso [headless|graphical]}"
 MODE="${2:-headless}"
+COMPOSITOR="${3:-labwc}"
+case "$COMPOSITOR" in
+  labwc) COMPOSITOR_ARG='' ;;
+  wayfire) COMPOSITOR_ARG='obos.compositor=wayfire' ;;
+  *) echo "Unknown compositor: $COMPOSITOR" >&2; exit 2 ;;
+esac
+if [[ "$MODE" == headless && "$COMPOSITOR" == wayfire ]]; then
+  echo 'Wayfire headless/pixman support is not asserted: test graphical mode instead.' >&2
+  exit 2
+fi
 case "$MODE" in
   headless)
     TESTARG='obos.test=1'
@@ -38,8 +48,8 @@ xorriso -osirrox on -indev "$ISO" \
   -extract /casper/vmlinuz "$TEMP/vmlinuz" \
   -extract /casper/initrd "$TEMP/initrd" >/dev/null 2>&1
 test -s "$TEMP/vmlinuz" && test -s "$TEMP/initrd"
-BOOTARGS="boot=casper live-media-path=/casper username=obos hostname=onebookos $TESTARG console=tty0 console=ttyS0,115200n8 ---"
-echo "[QEMU] Testing $MODE boot from ISO ($TESTARG; VGA=$VGA)"
+BOOTARGS="boot=casper live-media-path=/casper username=obos hostname=onebookos $TESTARG $COMPOSITOR_ARG console=tty0 console=ttyS0,115200n8 ---"
+echo "[QEMU] Testing $MODE $COMPOSITOR boot from ISO ($TESTARG; VGA=$VGA)"
 timeout --signal=TERM 420s qemu-system-x86_64 \
   -m 4096 -smp 2 -accel tcg -display none -vga "$VGA" -no-reboot \
   -kernel "$TEMP/vmlinuz" -initrd "$TEMP/initrd" -append "$BOOTARGS" \
@@ -66,14 +76,18 @@ done
 if [[ "$PASS" == 1 && "$MODE" == graphical ]]; then
   # Capture actual graphical pixels, not just a process marker. A blank/absent
   # image must be reported as a failed graphical build.
-  python3 "$(dirname "$0")/qemu-screenshot.py" "$TEMP/monitor.sock" \
-    "$(dirname "$ISO")/OneBookUI-graphical-qemu.png" || PASS=0
+  if [[ "$COMPOSITOR" == labwc ]]; then
+    SHOT="$(dirname "$ISO")/OneBookUI-graphical-qemu.png"
+  else
+    SHOT="$(dirname "$ISO")/OneBookUI-wayfire-graphical-qemu.png"
+  fi
+  python3 "$(dirname "$0")/qemu-screenshot.py" "$TEMP/monitor.sock" "$SHOT" || PASS=0
 fi
 if [[ "$PASS" == 1 ]]; then
-  echo "PASS: $MODE Wayland desktop boot and sustained shell activity in QEMU"
+  echo "PASS: $MODE $COMPOSITOR Wayland desktop boot and sustained shell activity in QEMU"
   exit 0
 fi
-echo "FAIL: $MODE OneBookUI Wayland boot was not verified" >&2
+echo "FAIL: $MODE $COMPOSITOR OneBookUI Wayland boot was not verified" >&2
 echo '--- Last 220 lines of guest serial output ---' >&2
 tail -220 "$LOG" >&2 || true
 echo '--- QEMU diagnostics ---' >&2
