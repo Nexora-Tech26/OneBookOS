@@ -32,6 +32,10 @@ assert (extension_root / "stylesheet.css").is_file()
 assert (extension_root / "icons/onebook.svg").is_file()
 source = (extension_root / "extension.js").read_text(encoding="utf-8")
 assert "_buildMenu()" in source, "Native Start menu is missing"
+assert "_revertToGnome()" in source, "GNOME recovery fallback missing"
+assert "Main.panel.show()" in source, "The stock GNOME panel cannot be restored"
+assert "catch (error)" in source, "GNOME widget errors are not contained"
+assert "Shell.BlurEffect" not in source, "Potentially unstable blur shader was reintroduced"
 assert "Main.overview.showApps()" not in source, "Start must not use GNOME app grid"
 # OneBookOS 0.2 intentionally disables the experimental compositor shader
 # because a GNOME Shell crash takes down the entire desktop session.
