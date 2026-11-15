@@ -138,7 +138,7 @@ class Desktop:
         GLib.timeout_add(1800, self.mark_ready)
         # During QEMU screenshot QA, display the real launcher for visual inspection.
         if "obos.gui-test=1" in Path("/proc/cmdline").read_text(encoding="utf-8"):
-            GLib.timeout_add(14000, self.preview_menu_for_qa)
+            GLib.timeout_add(5000, self.preview_menu_for_qa)
 
     def create_dock(self):
         # One continuous connected dock. The middle Start remains the exact center.
@@ -205,12 +205,22 @@ class Desktop:
 
     def create_notch(self):
         self.notch_pinned = False
+        self.notch_collapse_id = 0
         self.notch_win = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.TOP])
         eb = Gtk.EventBox()
+        # Gtk.Revealer keeps the child's full WIDTH during a vertical slide.
+        # A non-homogeneous Gtk.Stack gives the collapsed notch its own
+        # true compact geometry instead of a 320px empty black rectangle.
+        self.notch_stack = Gtk.Stack()
+        self.notch_stack.set_hhomogeneous(False)
+        self.notch_stack.set_vhomogeneous(False)
+        self.notch_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.notch_stack.set_transition_duration(220)
+        cap = styled(Gtk.Box(), "notch")
+        cap.set_size_request(132, 23)
+        self.notch_stack.add_named(cap, "closed")
+
         panel = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0), "notch")
-        cap = styled(Gtk.Box(), "notch-cap")
-        cap.set_size_request(126, 24)
-        panel.pack_start(cap, False, False, 0)
         self.reveal = Gtk.Revealer()
         self.reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
         self.reveal.set_transition_duration(340)
@@ -242,7 +252,9 @@ class Desktop:
         body.pack_start(self.brightness, False, False, 0)
         self.reveal.add(body)
         panel.pack_start(self.reveal, False, False, 0)
-        eb.add(panel)
+        self.notch_stack.add_named(panel, "expanded")
+        self.notch_stack.set_visible_child_name("closed")
+        eb.add(self.notch_stack)
         eb.connect("enter-notify-event", self.open_notch)
         eb.connect("leave-notify-event", self.schedule_notch_close)
         eb.connect("button-press-event", self.toggle_notch_pin)
@@ -377,6 +389,10 @@ class Desktop:
         if self.notch_close_id:
             GLib.source_remove(self.notch_close_id)
             self.notch_close_id = 0
+        if self.notch_collapse_id:
+            GLib.source_remove(self.notch_collapse_id)
+            self.notch_collapse_id = 0
+        self.notch_stack.set_visible_child_name("expanded")
         self.reveal.set_reveal_child(True)
         return False
 
@@ -392,6 +408,13 @@ class Desktop:
         self.notch_close_id = 0
         if not self.notch_pinned:
             self.reveal.set_reveal_child(False)
+            self.notch_collapse_id = GLib.timeout_add(355, self.finish_notch_collapse)
+        return False
+
+    def finish_notch_collapse(self):
+        self.notch_collapse_id = 0
+        if not self.notch_pinned and not self.reveal.get_reveal_child():
+            self.notch_stack.set_visible_child_name("closed")
         return False
 
     def set_volume(self, widget):
@@ -424,7 +447,9 @@ class Desktop:
 
     def preview_menu_for_qa(self):
         if not self.menu_visible:
-            self.toggle_menu()
+            self.menu_visible = True
+            self.menu_win.show_all()
+            self.menu_reveal.set_reveal_child(True)
         return False
 
     def mark_ready(self):
