@@ -1,0 +1,283 @@
+#!/usr/bin/python3
+"""OneBookUI native Wayland layer-shell preview (not a GNOME extension)."""
+import os
+import re
+import subprocess
+import time
+from pathlib import Path
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gtk, Gio, GLib, Gdk, GtkLayerShell
+
+ICON_DIR = Path("/usr/share/onebookos/icons")
+CSS = """
+window { background-color: transparent; color: #eaf0fa; font-family: 'Noto Sans', sans-serif; }
+.box { background: rgba(20,25,37,.96); border-radius: 24px; border: 1px solid rgba(245,248,255,.16); box-shadow: 0 10px 32px rgba(0,0,0,.25); padding: 6px 10px; }
+.start { background: #2679ff; border-radius: 16px; padding: 11px; border: 1px solid rgba(255,255,255,.20); }
+.dock { border-radius: 24px; background: rgba(24,29,43,.92); padding: 8px 14px; border: 1px solid rgba(255,255,255,.12); }
+.launcher { background: transparent; border: 0; border-radius: 15px; padding: 9px; color: #eaf0fa; }
+.launcher:hover { background: rgba(255,255,255,.14); }
+.notch { background: #07090e; border-radius: 0 0 25px 25px; padding: 7px 20px 10px 20px; border: 1px solid #2a2e36; }
+.notch-title { font-weight: bold; color: white; font-size: 12px; }
+.heading { font-weight: 700; font-size: 17px; color: white; }
+.caption { color: #a8b2c7; font-size: 11px; }
+.menu { background: rgba(19,24,36,.98); border-radius: 26px; border: 1px solid rgba(255,255,255,.17); padding: 20px; }
+.menu button { color: white; background: rgba(65,75,96,.50); border: 0; border-radius: 14px; padding: 10px; }
+.menu button:hover { background: rgba(72,110,181,.65); }
+scale trough { background: #384253; border-radius: 8px; min-height: 5px; }
+scale highlight { background: #63a0ff; border-radius: 8px; }
+scale slider { background: #e5efff; border-radius: 50%; min-height: 16px; min-width: 16px; }
+"""
+def styled(widget, cls):
+    widget.get_style_context().add_class(cls)
+    return widget
+
+def spawn(argv):
+    try:
+        subprocess.Popen(argv, start_new_session=True)
+    except OSError as exc:
+        print("OneBookUI launch error:", exc, flush=True)
+
+def read_cmd(argv):
+    try:
+        return subprocess.check_output(argv, text=True, stderr=subprocess.DEVNULL, timeout=2).strip()
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return ""
+
+def icon(name, size=24):
+    path = ICON_DIR / (name + ".svg")
+    if path.is_file():
+        picture = Gtk.Image.new_from_file(str(path))
+        picture.set_pixel_size(size)
+        return picture
+    return Gtk.Image.new_from_icon_name("application-x-executable", Gtk.IconSize.BUTTON)
+
+def layer_window(layer, edges, margin=0, keyboard=False):
+    w = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    w.set_decorated(False)
+    w.set_resizable(False)
+    w.set_app_paintable(True)
+    w.set_visual(w.get_screen().get_rgba_visual())
+    GtkLayerShell.init_for_window(w)
+    GtkLayerShell.set_layer(w, layer)
+    for edge in edges:
+        GtkLayerShell.set_anchor(w, edge, True)
+        GtkLayerShell.set_margin(w, edge, margin)
+    if keyboard:
+        GtkLayerShell.set_keyboard_mode(w, GtkLayerShell.KeyboardMode.ON_DEMAND)
+    return w
+
+def button(child, callback, cls="launcher", tip=None):
+    b = styled(Gtk.Button(), cls)
+    b.add(child)
+    b.connect("clicked", lambda _b: callback())
+    if tip:
+        b.set_tooltip_text(tip)
+    return b
+
+class Desktop:
+    def __init__(self):
+        css = Gtk.CssProvider()
+        css.load_from_data(CSS.encode())
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        self.ready = False
+        self.volume_updating = False
+        self.menu_visible = False
+        self.notch_close_id = 0
+        self.create_dock()
+        self.create_clock()
+        self.create_notch()
+        self.create_menu()
+        self.dock.show_all()
+        self.clock_win.show_all()
+        self.notch_win.show_all()
+        self.menu_win.hide()
+        GLib.timeout_add_seconds(1, self.tick)
+        GLib.timeout_add(1800, self.mark_ready)
+
+    def create_dock(self):
+        self.dock = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM], 14)
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        left = styled(Gtk.Box(spacing=5), "dock")
+        right = styled(Gtk.Box(spacing=5), "dock")
+        self.start_btn = button(icon("onebook", 28), self.toggle_menu, "start", "Start")
+        for name, label, cmd in [
+            ("files", "OneBook Files", ["/usr/local/bin/onebook-files"]),
+            ("terminal", "Terminal", ["xterm"]),
+        ]:
+            left.pack_start(button(icon(name), lambda c=cmd: spawn(c), tip=label), False, False, 0)
+        for name, label, cmd in [
+            ("settings", "Network Settings", ["nm-connection-editor"]),
+            ("monitor", "System Monitor", ["xterm", "-e", "top"]),
+        ]:
+            right.pack_start(button(icon(name), lambda c=cmd: spawn(c), tip=label), False, False, 0)
+        outer.pack_start(left, False, False, 0)
+        outer.pack_start(self.start_btn, False, False, 0)
+        outer.pack_start(right, False, False, 0)
+        self.dock.add(outer)
+        GtkLayerShell.auto_exclusive_zone_enable(self.dock)
+
+    def create_clock(self):
+        self.clock_win = layer_window(
+            GtkLayerShell.Layer.TOP,
+            [GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.RIGHT], 18
+        )
+        clock_box = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1), "box")
+        self.time_label = Gtk.Label()
+        self.date_label = styled(Gtk.Label(), "caption")
+        clock_box.pack_start(self.time_label, False, False, 0)
+        clock_box.pack_start(self.date_label, False, False, 0)
+        self.clock_win.add(clock_box)
+
+    def create_notch(self):
+        self.notch_win = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.TOP])
+        eb = Gtk.EventBox()
+        panel = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "notch")
+        heading = styled(Gtk.Label(label="●  OneBookOS  ·  System Hub"), "notch-title")
+        panel.pack_start(heading, False, False, 0)
+        self.reveal = Gtk.Revealer()
+        self.reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
+        self.reveal.set_transition_duration(260)
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        title = styled(Gtk.Label(label="Control Center"), "heading")
+        body.pack_start(title, False, False, 0)
+        self.net_label = Gtk.Label(label="Network: checking")
+        body.pack_start(self.net_label, False, False, 0)
+        self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+        self.volume.set_size_request(290, -1)
+        self.volume.set_value_pos(Gtk.PositionType.RIGHT)
+        self.volume.connect("value-changed", self.set_volume)
+        body.pack_start(Gtk.Label(label="Volume"), False, False, 0)
+        body.pack_start(self.volume, False, False, 0)
+        self.brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 100, 1)
+        self.brightness.set_value_pos(Gtk.PositionType.RIGHT)
+        self.brightness.connect("value-changed", self.set_brightness)
+        body.pack_start(Gtk.Label(label="Brightness"), False, False, 0)
+        body.pack_start(self.brightness, False, False, 0)
+        body.pack_start(
+            button(Gtk.Label(label="Wi-Fi settings"), lambda: spawn(["nm-connection-editor"])),
+            False, False, 0
+        )
+        self.reveal.add(body)
+        panel.pack_start(self.reveal, False, False, 0)
+        eb.add(panel)
+        eb.connect("enter-notify-event", self.open_notch)
+        eb.connect("leave-notify-event", self.schedule_notch_close)
+        self.notch_win.add(eb)
+
+    def create_menu(self):
+        self.menu_win = layer_window(
+            GtkLayerShell.Layer.OVERLAY,
+            [GtkLayerShell.Edge.BOTTOM], 84, keyboard=True
+        )
+        menu = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14), "menu")
+        menu.set_size_request(380, 390)
+        menu.pack_start(styled(Gtk.Label(label="OneBookOS  ·  Applications"), "heading"), False, False, 0)
+        self.search = Gtk.SearchEntry()
+        self.search.set_placeholder_text("Search installed applications")
+        self.search.connect("search-changed", lambda *_: self.fill_apps())
+        menu.pack_start(self.search, False, False, 0)
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.app_flow = Gtk.FlowBox()
+        self.app_flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.app_flow.set_max_children_per_line(3)
+        self.app_flow.set_min_children_per_line(3)
+        scroller.add(self.app_flow)
+        menu.pack_start(scroller, True, True, 0)
+        bottom = Gtk.Box(spacing=6)
+        bottom.pack_start(button(Gtk.Label(label="Files"), lambda: spawn(["/usr/local/bin/onebook-files"])), True, True, 0)
+        bottom.pack_start(button(Gtk.Label(label="Terminal"), lambda: spawn(["xterm"])), True, True, 0)
+        bottom.pack_start(button(Gtk.Label(label="Power off"), lambda: spawn(["systemctl", "poweroff"])), True, True, 0)
+        menu.pack_start(bottom, False, False, 0)
+        self.menu_win.add(menu)
+        self.apps = sorted(
+            [app for app in Gio.AppInfo.get_all() if app.should_show()],
+            key=lambda app: app.get_display_name().casefold()
+        )
+        self.fill_apps()
+
+    def fill_apps(self):
+        for item in self.app_flow.get_children():
+            self.app_flow.remove(item)
+        query = self.search.get_text().strip().casefold()
+        for app in [a for a in self.apps if query in a.get_display_name().casefold()][:45]:
+            label = Gtk.Label(label=app.get_display_name())
+            label.set_line_wrap(True)
+            label.set_max_width_chars(13)
+            label.set_ellipsize(3)
+            b = button(label, lambda a=app: self.launch_app(a))
+            b.set_size_request(112, 48)
+            self.app_flow.add(b)
+        self.app_flow.show_all()
+
+    def launch_app(self, app):
+        try:
+            app.launch([], None)
+        except GLib.Error as exc:
+            print("Cannot launch", app.get_display_name(), str(exc), flush=True)
+        self.toggle_menu()
+
+    def toggle_menu(self):
+        self.menu_visible = not self.menu_visible
+        if self.menu_visible:
+            self.search.set_text("")
+            self.menu_win.show_all()
+            self.search.grab_focus()
+        else:
+            self.menu_win.hide()
+
+    def open_notch(self, *_args):
+        self.reveal.set_reveal_child(True)
+        return False
+
+    def schedule_notch_close(self, *_args):
+        if self.notch_close_id:
+            GLib.source_remove(self.notch_close_id)
+        self.notch_close_id = GLib.timeout_add(460, self.close_notch)
+        return False
+
+    def close_notch(self):
+        self.notch_close_id = 0
+        self.reveal.set_reveal_child(False)
+        return False
+
+    def set_volume(self, widget):
+        if not self.volume_updating:
+            spawn(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", str(widget.get_value() / 100)])
+
+    def set_brightness(self, widget):
+        if not self.volume_updating:
+            spawn(["brightnessctl", "set", str(round(widget.get_value())) + "%"])
+
+    def tick(self):
+        self.time_label.set_text(time.strftime("%H:%M"))
+        self.date_label.set_text(time.strftime("%d.%m.%Y"))
+        state = read_cmd(["nmcli", "-t", "-f", "STATE", "general"])
+        self.net_label.set_text("Network: " + (state or "unavailable"))
+        vol = read_cmd(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+        match = re.search(r"(\d+\.\d+)", vol)
+        self.volume_updating = True
+        if match:
+            self.volume.set_value(min(100, float(match.group(1)) * 100))
+        raw = read_cmd(["brightnessctl", "-m"])
+        match = re.search(r"(\d+)%", raw)
+        if match:
+            self.brightness.set_value(int(match.group(1)))
+            self.brightness.set_sensitive(True)
+        else:
+            self.brightness.set_sensitive(False)
+        self.volume_updating = False
+        return True
+
+    def mark_ready(self):
+        path = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "onebook-shell-ready"
+        path.write_text("shell GTK layer surfaces initialized\n", encoding="utf-8")
+        return False
+
+if __name__ == "__main__":
+    Desktop()
+    Gtk.main()

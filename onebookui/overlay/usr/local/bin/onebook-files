@@ -1,0 +1,26 @@
+#!/usr/bin/python3
+"""A minimal native OneBook file browser; advanced file manager is pending."""
+import subprocess
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+w = Gtk.Window(title="OneBook Files")
+w.set_default_size(860, 580)
+w.set_border_width(12)
+box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+chooser = Gtk.FileChooserWidget(action=Gtk.FileChooserAction.OPEN)
+chooser.set_local_only(False)
+box.pack_start(chooser, True, True, 0)
+row = Gtk.Box(spacing=8)
+def open_selection(*_):
+    name = chooser.get_filename()
+    if name:
+        subprocess.Popen(["xdg-open", name], start_new_session=True)
+open_btn = Gtk.Button(label="Open selected file")
+open_btn.connect("clicked", open_selection)
+row.pack_start(open_btn, False, False, 0)
+box.pack_start(row, False, False, 0)
+w.add(box)
+w.connect("destroy", Gtk.main_quit)
+w.show_all()
+Gtk.main()
