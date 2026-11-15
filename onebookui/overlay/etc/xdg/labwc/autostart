@@ -2,3 +2,4 @@
 swaybg -c '#bedafa' -i /usr/share/backgrounds/onebookos/wallpaper.png -m fill > /tmp/onebook-wallpaper.log 2>&1 &
 /usr/local/bin/onebook-display >> /tmp/onebook-display.log 2>&1 &
 /usr/local/bin/onebook-shell >> /tmp/onebook-shell.log 2>&1 &
+/usr/local/bin/onebook-compositor-qa-apps >> /tmp/onebook-compositor-qa-apps.log 2>&1 &

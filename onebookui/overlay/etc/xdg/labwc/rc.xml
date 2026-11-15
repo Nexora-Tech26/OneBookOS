@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- OneBookUI: Ubuntu 24.04's labwc 0.7.1, not a proprietary compositor. -->
 <labwc_config>
   <core><decoration>server</decoration><reuseOutputMode>yes</reuseOutputMode></core>
+  <focus><followMouse>no</followMouse><raiseOnFocus>no</raiseOnFocus></focus>
+  <snapping><range>10</range><topMaximize>yes</topMaximize></snapping>
   <theme>
     <name>OneBookUI</name>
     <icon>Adwaita</icon>
@@ -10,10 +13,35 @@
     <font place="InactiveWindow"><name>Noto Sans</name><size>10</size><weight>normal</weight></font>
     <dropShadows>no</dropShadows>
   </theme>
+  <desktops>
+    <popupTime>350</popupTime>
+    <names><name>Desktop 1</name><name>Desktop 2</name><name>Desktop 3</name><name>Desktop 4</name></names>
+  </desktops>
   <keyboard>
+    <default />
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow"/></keybind>
     <keybind key="W-Return"><action name="Execute" command="foot"/></keybind>
     <keybind key="W-e"><action name="Execute" command="thunar"/></keybind>
+    <keybind key="W-n"><action name="Execute" command="mousepad"/></keybind>
+    <keybind key="W-d"><action name="ToggleShowDesktop"/></keybind>
+    <keybind key="W-Up"><action name="ToggleMaximize"/></keybind>
+    <keybind key="W-Left"><action name="SnapToEdge" direction="left"/></keybind>
+    <keybind key="W-Right"><action name="SnapToEdge" direction="right"/></keybind>
+    <keybind key="W-1"><action name="GoToDesktop" to="1"/></keybind>
+    <keybind key="W-2"><action name="GoToDesktop" to="2"/></keybind>
+    <keybind key="W-3"><action name="GoToDesktop" to="3"/></keybind>
+    <keybind key="W-4"><action name="GoToDesktop" to="4"/></keybind>
+    <keybind key="W-S-1"><action name="SendToDesktop" to="1" follow="yes"/></keybind>
+    <keybind key="W-S-2"><action name="SendToDesktop" to="2" follow="yes"/></keybind>
+    <keybind key="W-S-3"><action name="SendToDesktop" to="3" follow="yes"/></keybind>
+    <keybind key="W-S-4"><action name="SendToDesktop" to="4" follow="yes"/></keybind>
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"/></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"/></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"/></keybind>
+    <keybind key="XF86MonBrightnessUp"><action name="Execute" command="brightnessctl set +5%"/></keybind>
+    <keybind key="XF86MonBrightnessDown"><action name="Execute" command="brightnessctl set 5%-"/></keybind>
   </keyboard>
+  <mouse><default /></mouse>
 </labwc_config>

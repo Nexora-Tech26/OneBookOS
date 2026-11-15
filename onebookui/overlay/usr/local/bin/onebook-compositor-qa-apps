@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Only the QEMU graphical test launches QA apps; normal desktop is untouched.
+set -Eeuo pipefail
+grep -qE '(^|[[:space:]])obos\.gui-test=1([[:space:]]|$)' /proc/cmdline || exit 0
+printf '[Compositor QA] user=%s wayland=%s x11=%s\n' "$(id -un)" "${WAYLAND_DISPLAY:-unset}" "${DISPLAY:-unset}"
+test -n "${DISPLAY:-}" || { echo 'No XWayland DISPLAY exported by labwc' >&2; exit 1; }
+for _ in $(seq 1 40); do
+  test -S "${XDG_RUNTIME_DIR:-/run/user/1000}/${WAYLAND_DISPLAY:-wayland-0}" && break
+  sleep 0.25
+done
+foot -e sh -c 'sleep 270' > /tmp/onebook-foot-qa.log 2>&1 &
+xterm -T 'OneBookOS XWayland' -e sh -c 'sleep 270' > /tmp/onebook-xterm-qa.log 2>&1 &
+thunar > /tmp/onebook-thunar-qa.log 2>&1 &
+mousepad > /tmp/onebook-mousepad-qa.log 2>&1 &
+echo '[Compositor QA] launched foot, XWayland xterm, Thunar and Mousepad'

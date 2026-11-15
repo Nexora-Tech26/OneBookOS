@@ -7,11 +7,16 @@ RUNTIME="/run/user/$USER_ID"
 READY="$RUNTIME/onebook-shell-ready"
 SOCK="$RUNTIME/wayland-0"
 ok=0
-for _ in $(seq 1 160); do
+for _ in $(seq 1 210); do
   if systemctl is-active --quiet greetd.service && \
      pgrep -u obos -x labwc >/dev/null && \
      pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
-     test -S "$SOCK" && test -s "$READY"; then
+     test -S "$SOCK" && test -s "$READY" && \
+     pgrep -u obos -x foot >/dev/null && \
+     pgrep -u obos -x Xwayland >/dev/null && \
+     pgrep -u obos -x xterm >/dev/null && \
+     pgrep -u obos -x thunar >/dev/null && \
+     pgrep -u obos -x mousepad >/dev/null; then
     ok=1
     break
   fi
@@ -22,7 +27,12 @@ if test "$ok" -eq 1; then
   for _ in $(seq 1 20); do
     if ! pgrep -u obos -x labwc >/dev/null || \
        ! pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null || \
-       ! test -S "$SOCK" || ! test -s "$READY"; then
+       ! test -S "$SOCK" || ! test -s "$READY" || \
+       ! pgrep -u obos -x foot >/dev/null || \
+       ! pgrep -u obos -x Xwayland >/dev/null || \
+       ! pgrep -u obos -x xterm >/dev/null || \
+       ! pgrep -u obos -x thunar >/dev/null || \
+       ! pgrep -u obos -x mousepad >/dev/null; then
       ok=0
       break
     fi
@@ -30,6 +40,7 @@ if test "$ok" -eq 1; then
   done
 fi
 if test "$ok" -eq 1; then
+  echo ONEBOOK_APP_WAYLAND_XWAYLAND_OK > /dev/ttyS0
   echo ONEBOOK_GUI_AUTOLOGIN_OK > /dev/ttyS0
   exit 0
 fi
@@ -42,6 +53,11 @@ fi
   echo '--- GUI session and shell logs ---'
   tail -120 /tmp/onebook-session.log || true
   tail -120 /tmp/onebook-shell.log || true
+  tail -80 /tmp/onebook-compositor-qa-apps.log || true
+  tail -60 /tmp/onebook-foot-qa.log || true
+  tail -60 /tmp/onebook-xterm-qa.log || true
+  tail -60 /tmp/onebook-thunar-qa.log || true
+  tail -60 /tmp/onebook-mousepad-qa.log || true
   echo '--- runtime ---'
   ls -lah "$RUNTIME" || true
   echo '--- processes ---'

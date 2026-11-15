@@ -1,22 +1,81 @@
-#!/usr/bin/env bash
-# This script runs after the Wayland socket appears. Do not force laptop modes.
-set -Eeuo pipefail
-command -v wlr-randr >/dev/null || exit 0
-for _ in $(seq 1 12); do
-  if wlr-randr >/dev/null 2>&1; then break; fi
-  sleep 0.25
-done
-INFO="$(wlr-randr 2>/dev/null || true)"
-test -n "$INFO" || exit 0
-OUTPUT="$(printf '%s\n' "$INFO" | awk '/^[^[:space:]]/ {print $1; exit}')"
-test -n "$OUTPUT" || exit 0
-if systemd-detect-virt --vm --quiet; then
-  # The virtual GPU needs to advertise the mode; no unsupported force.
-  if printf '%s\n' "$INFO" | grep -q '1920x1080 px'; then
-    wlr-randr --output "$OUTPUT" --mode 1920x1080 --scale 1.0 || true
-  fi
-elif printf '%s\n' "$INFO" | grep -q '2880x1800 px'; then
-  # Galaxy Book4 Pro 14" internal OLED, use its preferred native mode.
-  # Fractional GTK3 scaling still needs visual QA on actual hardware.
-  wlr-randr --output "$OUTPUT" --scale 1.5 || true
-fi
+#!/usr/bin/env python3
+"""OneBookUI output management: preserve real modes; configure per connector."""
+import argparse
+import re
+import subprocess
+
+def parse_outputs(info):
+    outputs = []
+    for line in info.splitlines():
+        if line.strip() and not line[0].isspace():
+            outputs.append({"name": line.split()[0], "modes": set(), "enabled": True})
+        elif outputs:
+            match = re.search(r"^\s+(\d+x\d+)\s+px", line)
+            if match:
+                outputs[-1]["modes"].add(match.group(1))
+            if re.match(r"^\s+Enabled:\s+no", line):
+                outputs[-1]["enabled"] = False
+    return outputs
+
+def choose(outputs, virtual):
+    commands = []
+    for output in outputs:
+        if not output["enabled"]:
+            continue
+        if virtual and "1920x1080" in output["modes"]:
+            commands.append(["wlr-randr", "--output", output["name"], "--mode", "1920x1080", "--scale", "1"])
+        elif not virtual and output["name"].startswith("eDP") and "2880x1800" in output["modes"]:
+            commands.append(["wlr-randr", "--output", output["name"], "--scale", "1.5"])
+    return commands
+
+def main():
+    parser = argparse.ArgumentParser(description="OneBookUI display modes/scaling")
+    parser.add_argument("--list", action="store_true")
+    parser.add_argument("--output")
+    parser.add_argument("--scale", type=float)
+    parser.add_argument("--mode")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        fixture = ('eDP-1 "Internal"\n  Enabled: yes\n  Modes:\n  2880x1800 px, 90.00 Hz\n'
+                   'HDMI-A-1 "Monitor"\n  Enabled: yes\n  Modes:\n  1920x1080 px, 60.00 Hz\n')
+        got = parse_outputs(fixture)
+        assert len(got) == 2
+        assert choose(got, False) == [["wlr-randr", "--output", "eDP-1", "--scale", "1.5"]]
+        assert choose(got, True) == [["wlr-randr", "--output", "HDMI-A-1", "--mode", "1920x1080", "--scale", "1"]]
+        print("OneBook output discovery and scaling: OK")
+        return
+    try:
+        result = subprocess.check_output(["wlr-randr"], text=True, timeout=5)
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        print(f"Wayland output manager unavailable: {exc}")
+        return
+    if args.list:
+        print(result, end="")
+        return
+    outputs = parse_outputs(result)
+    if args.output:
+        out = next((o for o in outputs if o["name"] == args.output and o["enabled"]), None)
+        if out is None:
+            parser.error("Specified output is not connected or enabled")
+        if args.mode is None and args.scale is None:
+            parser.error("Provide --mode and/or --scale")
+        cmd = ["wlr-randr", "--output", args.output]
+        if args.mode:
+            if not re.fullmatch(r"\d+x\d+", args.mode) or args.mode not in out["modes"]:
+                parser.error("Unsupported display mode")
+            cmd += ["--mode", args.mode]
+        if args.scale is not None:
+            if not (0.5 <= args.scale <= 3):
+                parser.error("Scale must be between 0.5 and 3")
+            cmd += ["--scale", str(args.scale)]
+        commands = [cmd]
+    else:
+        virtual = subprocess.run(["systemd-detect-virt", "--vm", "--quiet"], check=False).returncode == 0
+        commands = choose(outputs, virtual)
+    for cmd in commands:
+        print("Configuring output:", " ".join(cmd), flush=True)
+        subprocess.run(cmd, check=False, timeout=8)
+
+if __name__ == "__main__":
+    main()
