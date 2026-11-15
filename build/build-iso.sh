@@ -41,14 +41,14 @@ log "Install kernel, Casper, GNOME 46 and system services"
 chroot "$FS" apt-get update
 chroot "$FS" apt-get install -y --no-install-recommends \
  ubuntu-minimal ubuntu-standard linux-generic casper initramfs-tools \
- systemd-sysv dbus-x11 gdm3 gnome-shell gnome-session ubuntu-session \
+ systemd-sysv dbus-x11 gdm3 gnome-shell gnome-session \
  gnome-control-center gnome-terminal nautilus gnome-text-editor gnome-calculator \
  gnome-system-monitor gnome-software gnome-settings-daemon \
  xserver-xorg-core xserver-xorg-input-all xserver-xorg-video-all \
  xinit xauth x11-xserver-utils x11-utils dconf-cli \
  network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber pulseaudio-utils playerctl \
  alsa-utils pavucontrol udisks2 gvfs gvfs-backends \
- xdg-utils fonts-noto-core fonts-noto-color-emoji papirus-icon-theme \
+ bibata-cursor-theme xdg-utils fonts-noto-core fonts-noto-color-emoji papirus-icon-theme \
  evince eog gnome-themes-extra adwaita-icon-theme-full \
  policykit-1-gnome sudo locales ca-certificates curl wget \
  pciutils usbutils lshw fwupd ubuntu-drivers-common mesa-utils \
@@ -81,6 +81,9 @@ chroot "$FS" systemctl set-default graphical.target
 chroot "$FS" systemctl enable gdm3 NetworkManager
 chroot "$FS" systemctl enable obos-smoke.service obos-gui-smoke.service
 chroot "$FS" dconf update
+# Never ship the Ubuntu Dock alongside OneBookOS' independent taskbar.
+rm -rf "$FS/usr/share/gnome-shell/extensions/ubuntu-dock@ubuntu.com" "$FS/usr/share/gnome-shell/extensions/dash-to-dock@micxgx.gmail.com"
+test -f "$FS/usr/share/xsessions/gnome.desktop" || test -f "$FS/usr/share/xsessions/gnome-xorg.desktop" || { echo 'GNOME X11 session missing' >&2; exit 1; }
 # Check critical runtime pieces before making a 1+ GB ISO.
 for required in /usr/sbin/gdm3 /usr/bin/gnome-shell /usr/bin/gnome-session /usr/bin/Xorg /usr/bin/xauth; do
   test -x "$FS$required" || { echo "Missing GNOME binary: $required" >&2; exit 1; }
