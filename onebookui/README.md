@@ -18,7 +18,7 @@ GitHub Actions runs the same steps and publishes an artifact **only after succes
 
 ## QEMU test scope
 
-The test boots the **actual Casper ISO** in QEMU. Its GRUB test entry sets `obos.test=1`, which activates the headless wlroots backend *inside the guest*. The check requires a running labwc compositor, a real Wayland socket, a native GTK layer-shell process and 35 seconds of process stability. It cannot prove graphics output on DRM hardware, interactive input, the disk installer, or visual quality. Real-device and interactive QEMU tests remain necessary before release.
+The test extracts the kernel and initrd **from the built ISO** and passes `obos.test=1` explicitly to QEMU's direct-kernel boot, while mounting the actual ISO as its Casper live medium. This keeps the normal ISO's GRUB default interactive. The GRUB BIOS/UEFI boot catalog is verified separately with xorriso. The check requires a running labwc compositor, a real Wayland socket, a native GTK layer-shell process and 35 seconds of process stability. It cannot prove graphics output on DRM hardware, interactive input, the disk installer, or visual quality. Real-device and interactive QEMU tests remain necessary before release.
 
 ## Source-of-truth work plan
 

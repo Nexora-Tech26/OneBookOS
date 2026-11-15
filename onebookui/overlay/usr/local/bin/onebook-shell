@@ -58,7 +58,9 @@ def layer_window(layer, edges, margin=0, keyboard=False):
     w.set_decorated(False)
     w.set_resizable(False)
     w.set_app_paintable(True)
-    w.set_visual(w.get_screen().get_rgba_visual())
+    rgba = w.get_screen().get_rgba_visual()
+    if rgba is not None:
+        w.set_visual(rgba)
     GtkLayerShell.init_for_window(w)
     GtkLayerShell.set_layer(w, layer)
     for edge in edges:

@@ -36,14 +36,17 @@ chroot "$FS" apt-get update
 chroot "$FS" apt-get install -y --no-install-recommends \
  ubuntu-minimal linux-generic linux-firmware casper initramfs-tools systemd-sysv \
  dbus-user-session dbus-x11 greetd labwc xwayland swaybg \
- python3 python3-gi gir1.2-gtk-3.0 gir1.2-gtklayershell-0.1 \
- network-manager bluez pipewire pipewire-pulse wireplumber \
+ python3 python3-gi gir1.2-gtk-3.0 gir1.2-gtklayershell-0.1 libglib2.0-bin \
+ network-manager network-manager-gnome bluez pipewire pipewire-pulse wireplumber \
  upower brightnessctl alsa-utils procps psmisc \
  sudo locales ca-certificates curl xdg-utils \
  fonts-noto-core fonts-noto-color-emoji adwaita-icon-theme \
  mesa-utils libgl1-mesa-dri policykit-1 \
  udisks2 gvfs gvfs-backends xterm
 rsync -a "$ROOT/onebookui/overlay/" "$FS/"
+# Casper's legacy accessibility and crash hooks expect these standard paths.
+mkdir -p "$FS/etc/xdg/autostart" "$FS/var/crash"
+test -x "$FS/usr/bin/glib-compile-schemas" || { echo "GLib schema compiler missing" >&2; exit 1; }
 install -Dm644 "$ROOT/branding/wallpaper.svg" "$FS/usr/share/backgrounds/onebookos/wallpaper.svg"
 mkdir -p "$FS/usr/share/onebookos/icons"
 cp "$ROOT/overlay/usr/share/gnome-shell/extensions/onebookos@nexora.tech/icons/"*.svg "$FS/usr/share/onebookos/icons/"

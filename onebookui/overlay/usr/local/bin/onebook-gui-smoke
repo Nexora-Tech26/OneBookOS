@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+echo "ONEBOOK_TEST_SERVICE_STARTED" > /dev/ttyS0
 OBOS_UID="$(id -u obos)"
 READY="/run/user/$OBOS_UID/onebook-shell-ready"
 ok=0
