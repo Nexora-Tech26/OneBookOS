@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "project": "OneBookOS",
+  "stage": 1,
+  "status": "foundation",
+  "base_os": "Ubuntu 24.04 LTS (amd64)",
+  "current_baselines": [
+    {
+      "id": "legacy-gnome",
+      "path": "overlay",
+      "builder": "build/build-iso.sh",
+      "ci": ".github/workflows/build-iso.yml",
+      "purpose": "Preserved historical GNOME alpha"
+    },
+    {
+      "id": "wayland-preview",
+      "path": "onebookui",
+      "builder": "onebookui/build/build-iso.sh",
+      "ci": ".github/workflows/onebookui-iso.yml",
+      "purpose": "Experimental labwc/GTK3 Wayland preview"
+    }
+  ],
+  "planned_modules": [
+    "shell",
+    "ui-kit",
+    "apps",
+    "services",
+    "installer",
+    "tests"
+  ],
+  "compositor_decision": "pending evaluation; labwc is a preview baseline",
+  "toolkit_decision": "pending evaluation; current preview is GTK3",
+  "design_reference": "docs/design/ONEBOOKUI8.md",
+  "roadmap": "docs/roadmap/16-STAGES.md",
+  "quality_gate": "docs/testing/QUALITY-GATES.md"
+}
