@@ -1,26 +1,29 @@
 [org/gnome/shell]
 enabled-extensions=['onebookos@nexora.tech']
-disable-user-extensions=false
 disabled-extensions=['ubuntu-dock@ubuntu.com', 'ding@rastersoft.com']
-
+disable-user-extensions=false
+favorite-apps=['org.gnome.Nautilus.desktop','org.gnome.Settings.desktop','org.gnome.Terminal.desktop']
 
 [org/gnome/desktop/interface]
 color-scheme='prefer-light'
+gtk-theme='Yaru'
 icon-theme='Yaru'
 cursor-theme='Bibata-Modern-Classic'
 cursor-size=24
 enable-animations=true
-
-
-[org/gnome/desktop/background]
-picture-uri='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
-picture-uri-dark='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
+font-name='Ubuntu 11'
 
 [org/gnome/desktop/wm/preferences]
 button-layout='close,minimize,maximize:'
 theme='Yaru'
 
-[org/gnome/desktop/peripherals/mouse]
-cursor-size=24
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
+picture-uri-dark='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
+picture-options='zoom'
 
-[org/gnome/desktop/interface]
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/share/backgrounds/onebookos/wallpaper.svg'
+
+[org/gnome/mutter]
+edge-tiling=true
