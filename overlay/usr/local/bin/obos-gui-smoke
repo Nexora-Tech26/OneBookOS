@@ -1,18 +1,32 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# The marker is created by the GNOME Shell extension itself on successful enable().
-# The desktop test therefore requires GDM, an actual user GNOME Shell and the extension.
+# Do not treat the GNOME extension marker as proof of a stable desktop.
+# Watch the same user GNOME Shell process for 45 seconds after the marker.
 for attempt in $(seq 1 150); do
-  if pgrep -u obos -x gnome-shell >/dev/null 2>&1 && \
-     pgrep -u obos -f gnome-session >/dev/null 2>&1 && \
+  pid="$(pgrep -u obos -x gnome-shell | head -n 1 || true)"
+  if [[ -n "$pid" ]] && pgrep -u obos -f 'gnome-session' >/dev/null 2>&1 && \
      test -f /tmp/obos-gnome-extension-ready; then
-    echo 'OBOS_GUI_OK' > /dev/ttyS0
-    exit 0
+    stable=1
+    for sec in $(seq 1 45); do
+      if ! kill -0 "$pid" 2>/dev/null || \
+         ! test -f /tmp/obos-gnome-extension-ready || \
+         ! pgrep -u obos -x gnome-shell | grep -qx "$pid"; then
+        stable=0
+        break
+      fi
+      sleep 1
+    done
+    if [[ "$stable" == 1 ]];then
+      echo 'OBOS_GUI_OK' > /dev/ttyS0
+      exit 0
+    fi
+    echo 'OBOS_GUI_FAILED: GNOME Shell restarted/crashed after extension startup' > /dev/ttyS0
+    break
   fi
   sleep 2
 done
-echo 'OBOS_GUI_FAILED: GNOME Shell, session or OneBook extension missing' > /dev/ttyS0
+echo 'OBOS_GUI_FAILED: GNOME desktop not stable' > /dev/ttyS0
 systemctl --no-pager -l status gdm3.service >> /dev/ttyS0 2>&1 || true
 journalctl -b -u gdm3 --no-pager -n 60 >> /dev/ttyS0 2>&1 || true
-journalctl -b --no-pager -n 40 | grep -Ei 'gnome-shell|onebookos|extension' >> /dev/ttyS0 2>&1 || true
+journalctl -b --no-pager -n 100 | grep -Ei 'gnome-shell|onebookos|extension|segfault|signal 11' >> /dev/ttyS0 2>&1 || true
 exit 1
