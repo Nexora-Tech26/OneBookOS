@@ -52,6 +52,10 @@ jobs:
           xorriso -indev dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso -report_el_torito plain
           xorriso -indev dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso -ls /casper
           (cd dist && sha256sum -c SHA256SUMS-onebookui)
+      - name: Permit QEMU to save framebuffer QA beside root-built ISO
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" dist
+          test -w dist
       - name: Verify Wayland and graphical desktop in parallel QEMU sessions
         run: |
           bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso headless > "$RUNNER_TEMP/obos-headless.log" 2>&1 &
