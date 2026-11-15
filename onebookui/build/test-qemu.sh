@@ -37,7 +37,9 @@ timeout --signal=TERM 420s qemu-system-x86_64 \
 PID=$!
 PASS=0
 for _ in $(seq 1 400); do
-  if grep -q '^ONEBOOK_WAYLAND_GUI_OK' "$LOG" 2>/dev/null; then
+  # Serial getty can leave its login prompt on the same line as the guest marker.
+  # Match the unique success token anywhere in the serial stream.
+  if grep -Fq 'ONEBOOK_WAYLAND_GUI_OK' "$LOG" 2>/dev/null; then
     PASS=1
     break
   fi
