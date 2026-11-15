@@ -33,7 +33,12 @@ assert (extension_root / "icons/onebook.svg").is_file()
 source = (extension_root / "extension.js").read_text(encoding="utf-8")
 assert "_buildMenu()" in source, "Native Start menu is missing"
 assert "Main.overview.showApps()" not in source, "Start must not use GNOME app grid"
-assert "Shell.BlurEffect" in source, "GNOME compositor blur is missing"
+# OneBookOS 0.2 intentionally disables the experimental compositor shader
+# because a GNOME Shell crash takes down the entire desktop session.
+# Require the stable translucent styling; do not demand the unsafe blur.
+stylesheet = (extension_root / "stylesheet.css").read_text(encoding="utf-8")
+assert "rgba(" in stylesheet, "Translucent desktop surfaces are missing"
+assert "_blur(" in source, "Compatibility path for optional visual effects is missing"
 for icon in ["onebook", "files", "settings", "terminal", "store", "calculator", "notes", "monitor", "photos", "controls", "power"]:
     ET.parse(extension_root / "icons" / f"{icon}.svg")
 for file in sorted((root / "branding").glob("*.svg")):
