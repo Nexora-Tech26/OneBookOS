@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Verify the *normal* greetd session, not the special headless test session.
 set -Eeuo pipefail
+COMPOSITOR=labwc
+if grep -qE '(^|[[:space:]])obos\\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+  COMPOSITOR=wayfire
+fi
 printf '%s\n' 'ONEBOOK_GUI_AUTOLOGIN_CHECK_STARTED' > /dev/ttyS0
 USER_ID="$(id -u obos)"
 RUNTIME="/run/user/$USER_ID"
@@ -9,7 +13,7 @@ SOCK="$RUNTIME/wayland-0"
 ok=0
 for _ in $(seq 1 210); do
   if systemctl is-active --quiet greetd.service && \
-     pgrep -u obos -x labwc >/dev/null && \
+     pgrep -u obos -x "$COMPOSITOR" >/dev/null && \
      pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
      test -S "$SOCK" && test -s "$READY" && \
      pgrep -u obos -x foot >/dev/null && \
@@ -25,7 +29,7 @@ done
 if test "$ok" -eq 1; then
   # Keep observing to avoid an accidental success on a crashing session.
   for _ in $(seq 1 20); do
-    if ! pgrep -u obos -x labwc >/dev/null || \
+    if ! pgrep -u obos -x "$COMPOSITOR" >/dev/null || \
        ! pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null || \
        ! test -S "$SOCK" || ! test -s "$READY" || \
        ! pgrep -u obos -x foot >/dev/null || \

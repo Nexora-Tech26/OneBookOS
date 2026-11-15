@@ -66,11 +66,12 @@ if ! test -s "$CACHE"; then
   mount_chroot
 fi
 test ! -e "$FS/usr/bin/gnome-shell" || { echo 'ERROR: GNOME Shell was found in rootfs' >&2; exit 1; }
-for bin in /usr/bin/labwc /usr/sbin/greetd /usr/bin/python3 /usr/bin/nmcli /usr/bin/foot /usr/bin/thunar /usr/bin/mousepad; do
+for bin in /usr/bin/labwc /usr/bin/wayfire /usr/sbin/greetd /usr/bin/python3 /usr/bin/nmcli /usr/bin/foot /usr/bin/thunar /usr/bin/mousepad; do
   test -x "$FS$bin" || { echo "Missing required runtime component: $bin" >&2; exit 1; }
 done
 rsync -a "$ROOT/onebookui/overlay/" "$FS/"
 test -s "$FS/usr/share/themes/OneBookUI/gtk-3.0/gtk.css"
+test -s "$FS/etc/xdg/wayfire.ini"
 test -s "$FS/usr/share/themes/OneBookUI/openbox-3/themerc"
 mkdir -p "$FS/etc/xdg/autostart" "$FS/var/crash" "$FS/usr/share/backgrounds/onebookos" "$FS/usr/share/onebookos/icons"
 test -x "$FS/usr/bin/glib-compile-schemas" || { echo 'GLib schemas compiler missing' >&2; exit 1; }

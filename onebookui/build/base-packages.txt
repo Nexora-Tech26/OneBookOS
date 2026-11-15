@@ -8,6 +8,7 @@ dbus-user-session
 dbus-x11
 greetd
 labwc
+wayfire
 xwayland
 swaybg
 python3
