@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2317 # cleanup() is invoked indirectly by EXIT trap.
 # Verify Casper + the independent Wayland shell by booting the actual ISO's
 # kernel and initrd with an explicit diagnostic flag. Normal GRUB default
 # stays interactive for users and is NEVER changed to test/headless mode.
