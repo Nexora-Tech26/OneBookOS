@@ -97,7 +97,7 @@ EOF
 cat > "$FS/etc/os-release" <<EOF
 PRETTY_NAME="OneBookOS OneBookUI Wayland Preview (Ubuntu 24.04)"
 NAME="OneBookOS"
-VERSION_ID="0.3-preview"
+VERSION_ID="${ONEBOOK_VERSION_ID:-0.3-preview}"
 ID=ubuntu
 ID_LIKE=debian
 UBUNTU_CODENAME=noble

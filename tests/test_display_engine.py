@@ -32,6 +32,11 @@ class DisplayEngineTests(unittest.TestCase):
 
     def test_session_selector_and_boot_test(self):
         session = (BASE / "overlay/usr/local/bin/onebook-session").read_text()
+        selector = r"obos\.compositor=wayfire"
+        self.assertIn(selector, session)
+        for fname in ("onebook-gui-smoke", "onebook-gui-autologin-smoke"):
+            content = (BASE / "overlay/usr/local/bin" / fname).read_text()
+            self.assertIn(selector, content)
         self.assertIn("wayfire --config /etc/xdg/wayfire.ini", session)
         self.assertIn("exec dbus-run-session -- labwc", session)
         qemu = (BASE / "build/test-qemu.sh").read_text()

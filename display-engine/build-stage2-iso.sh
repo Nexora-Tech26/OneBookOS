@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 test "$(id -u)" -eq 0 || { echo "Run as root (sudo)" >&2; exit 1; }
+export ONEBOOK_VERSION_ID=0.1.2-stage2
 bash "$ROOT/onebookui/build/build-iso.sh"
 OUT="$ROOT/dist"
 ORIGINAL="$OUT/OneBookOS-OneBookUI-0.3-preview-amd64.iso"
