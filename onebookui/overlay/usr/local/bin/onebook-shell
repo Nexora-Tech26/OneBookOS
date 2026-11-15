@@ -124,7 +124,7 @@ class Desktop:
         right = styled(Gtk.Box(spacing=3), "dock")
         self.start_btn = button(icon("onebook", 22), self.toggle_menu, "start", "Start")
         for name, label, cmd in [
-            ("files", "OneBook Files", ["/usr/local/bin/onebook-files"]),
+            ("files", "OneBook Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
         ]:
             left.pack_start(button(icon(name, 22), lambda c=cmd: spawn(c), tip=label), False, False, 0)
@@ -147,7 +147,7 @@ class Desktop:
         )
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
         for name, title, command in [
-            ("files", "Files", ["/usr/local/bin/onebook-files"]),
+            ("files", "Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
             ("notes", "Notes", ["mousepad"]),
             ("settings", "Network", ["nm-connection-editor"]),
@@ -233,7 +233,7 @@ class Desktop:
         scroller.add(self.app_flow)
         menu.pack_start(scroller, True, True, 0)
         bottom = Gtk.Box(spacing=6)
-        bottom.pack_start(button(Gtk.Label(label="Files"), lambda: spawn(["/usr/local/bin/onebook-files"])), True, True, 0)
+        bottom.pack_start(button(Gtk.Label(label="Files"), lambda: spawn(["thunar"])), True, True, 0)
         bottom.pack_start(button(Gtk.Label(label="Terminal"), lambda: spawn(["foot"])), True, True, 0)
         bottom.pack_start(button(Gtk.Label(label="Power off"), lambda: spawn(["systemctl", "poweroff"])), True, True, 0)
         menu.pack_start(bottom, False, False, 0)

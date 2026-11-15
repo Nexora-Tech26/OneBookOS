@@ -5,7 +5,7 @@ export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=OneBookUI
 export XDG_SESSION_DESKTOP=onebookui
 export GDK_BACKEND=wayland
-export GTK_THEME=Adwaita
+export GTK_THEME=OneBookUI
 # Keep custom GTK3 shell sizing at logical pixels; let Wayland output scale separately.
 export XCURSOR_SIZE=22
 if grep -qE '(^|[[:space:]])obos\.test=1([[:space:]]|$)' /proc/cmdline; then

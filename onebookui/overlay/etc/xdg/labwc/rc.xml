@@ -14,6 +14,6 @@
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="A-Tab"><action name="NextWindow"/></keybind>
     <keybind key="W-Return"><action name="Execute" command="foot"/></keybind>
-    <keybind key="W-e"><action name="Execute" command="/usr/local/bin/onebook-files"/></keybind>
+    <keybind key="W-e"><action name="Execute" command="thunar"/></keybind>
   </keyboard>
 </labwc_config>
