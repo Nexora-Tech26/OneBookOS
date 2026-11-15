@@ -43,6 +43,16 @@ chroot "$FS" apt-get install -y --no-install-recommends \
  fonts-noto-core fonts-noto-color-emoji adwaita-icon-theme \
  mesa-utils libgl1-mesa-dri policykit-1 \
  udisks2 gvfs gvfs-backends xterm
+# Ubuntu's package dependency resolver can bring in GNOME Shell, even for labwc.
+# OneBookUI must never ship GNOME Shell as a desktop or fallback.
+if chroot "$FS" dpkg-query -W -f='${Status}' gnome-shell 2>/dev/null | grep -q 'install ok installed'; then
+  echo '[OneBookUI] Purging unwanted GNOME Shell from Live filesystem'
+  chroot "$FS" apt-get purge -y gnome-shell gnome-shell-common
+fi
+test ! -e "$FS/usr/bin/gnome-shell" || { echo 'ERROR: GNOME Shell still installed; aborting' >&2; exit 1; }
+for critical in /usr/bin/labwc /usr/sbin/greetd /usr/bin/python3 /usr/bin/nmcli; do
+  test -x "$FS$critical" || { echo "Missing required runtime component: $critical" >&2; exit 1; }
+done
 rsync -a "$ROOT/onebookui/overlay/" "$FS/"
 # Casper's legacy accessibility and crash hooks expect these standard paths.
 mkdir -p "$FS/etc/xdg/autostart" "$FS/var/crash"
