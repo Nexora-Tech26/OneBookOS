@@ -52,6 +52,7 @@ export default class OneBookDesktop extends Extension {
             return;
         }
         Main.panel.hide();
+        try {
         this._connect(Main.layoutManager, 'monitors-changed', () => this._relayout());
         for (const actor of [this._dock, this._notch, this._startMenu])
             this._connect(actor, 'notify::width', () => this._relayout());
@@ -82,6 +83,10 @@ export default class OneBookDesktop extends Extension {
         // Reached from inside the actual GNOME Shell extension, not only GDM.
         try { GLib.file_set_contents('/tmp/obos-gnome-extension-ready', 'onebookos-0.2-custom-start'); }
         catch (e) { logError(e); }
+        } catch (error) {
+            logError(error, 'OneBookOS: startup failed after creating chrome; GNOME fallback engaged');
+            this._revertToGnome();
+        }
     }
     _connect(obj, name, fn) {
         const guarded = (...args) => {
