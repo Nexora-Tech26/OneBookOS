@@ -1,0 +1,12 @@
+[Icon Theme]
+Name=OneBookOS
+Comment=Original colorful squircle icons for OneBookOS 0.2
+Inherits=Yaru,Adwaita,hicolor
+Directories=scalable/apps
+
+[scalable/apps]
+Size=64
+Type=Scalable
+MinSize=16
+MaxSize=256
+Context=Applications
