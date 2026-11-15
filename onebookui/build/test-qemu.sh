@@ -43,7 +43,7 @@ echo "[QEMU] Testing $MODE boot from ISO ($TESTARG; VGA=$VGA)"
 timeout --signal=TERM 420s qemu-system-x86_64 \
   -m 4096 -smp 2 -accel tcg -display none -vga "$VGA" -no-reboot \
   -kernel "$TEMP/vmlinuz" -initrd "$TEMP/initrd" -append "$BOOTARGS" \
-  -cdrom "$ISO" -boot d -serial "file:$LOG" -monitor "unix:$TEMP/monitor.sock,server=on,wait=off" \
+  -cdrom "$ISO" -boot d -serial "file:$LOG" -qmp "unix:$TEMP/monitor.sock,server=on,wait=off" \
   >"$TEMP/qemu.log" 2>&1 &
 PID=$!
 PASS=0

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Capture real QEMU HMP framebuffer and validate it is not blank; Python stdlib."""
+"""Capture real QEMU QMP framebuffer and validate it is not blank; Python stdlib."""
 import argparse
 import binascii
+import json
 import pathlib
 import socket
 import struct
@@ -66,26 +67,39 @@ def verify_pixels(width, height, pixels):
     return ratio
 
 
-def capture(monitor_path, ppm):
+def capture(qmp_path, ppm):
+    """QMP is a structured JSON protocol, unlike HMP's interactive echoed input."""
     connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    connection.settimeout(5)
-    connection.connect(monitor_path)
-    with connection:
-        try:
-            connection.recv(8192)
-        except socket.timeout:
-            pass
-        connection.sendall(f"screendump {ppm}\n".encode())
-        deadline = time.monotonic() + 20
-        while time.monotonic() < deadline:
-            if ppm.is_file() and ppm.stat().st_size > 4096:
-                return
-            time.sleep(.2)
-        try:
-            response = connection.recv(8192).decode("utf-8", "replace")
-        except socket.timeout:
-            response = "(monitor response unavailable)"
-        raise RuntimeError(f"QEMU could not capture actual GUI: {response}")
+    connection.settimeout(20)
+    connection.connect(qmp_path)
+    with connection, connection.makefile("rwb", buffering=0) as stream:
+        greeting = json.loads(stream.readline())
+        if "QMP" not in greeting:
+            raise RuntimeError(f"Invalid QMP greeting: {greeting!r}")
+
+        def execute(command, arguments=None):
+            request = {"execute": command}
+            if arguments is not None:
+                request["arguments"] = arguments
+            stream.write(json.dumps(request).encode("utf-8") + b"\n")
+            for _ in range(80):
+                response = json.loads(stream.readline())
+                if "event" in response:
+                    continue
+                if "error" in response:
+                    raise RuntimeError(f"QMP {command} error: {response['error']}")
+                if "return" in response:
+                    return
+            raise RuntimeError(f"QMP {command}: no command response")
+
+        execute("qmp_capabilities")
+        execute("screendump", {"filename": str(ppm), "format": "ppm"})
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if ppm.is_file() and ppm.stat().st_size > 4096:
+            return
+        time.sleep(0.2)
+    raise RuntimeError("QMP screendump reported success, but no image was written")
 
 
 def main():
