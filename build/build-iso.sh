@@ -54,6 +54,26 @@ chroot "$FS" apt-get install -y --no-install-recommends \
  pciutils usbutils lshw fwupd ubuntu-drivers-common mesa-utils \
  linux-firmware python3 python3-gi gir1.2-gtk-3.0 gir1.2-wnck-3.0 dmidecode
 rsync -a "$ROOT/overlay/" "$FS/"
+# Install actual OneBookOS SVG icons as a system-wide GNOME icon theme.
+ICON_SOURCE="$FS/usr/share/gnome-shell/extensions/onebookos@nexora.tech/icons"
+ICON_TARGET="$FS/usr/share/icons/OneBookOS/scalable/apps"
+mkdir -p "$ICON_TARGET"
+for mapping in \
+ "files:org.gnome.Nautilus" "files:system-file-manager" \
+ "settings:org.gnome.Settings" "settings:preferences-system" \
+ "terminal:org.gnome.Terminal" "terminal:utilities-terminal" \
+ "store:org.gnome.Software" "store:system-software-install" \
+ "calculator:org.gnome.Calculator" "calculator:accessories-calculator" \
+ "notes:org.gnome.TextEditor" "notes:accessories-text-editor" \
+ "monitor:org.gnome.SystemMonitor" "monitor:utilities-system-monitor" \
+ "photos:org.gnome.eog" "photos:org.gnome.Loupe" \
+ "onebook:onebookos"; do
+  source_icon="${mapping%%:*}"
+  dest_icon="${mapping#*:}"
+  test -f "$ICON_SOURCE/$source_icon.svg" || { echo "Missing OneBookOS app icon: $source_icon" >&2; exit 1; }
+  cp "$ICON_SOURCE/$source_icon.svg" "$ICON_TARGET/$dest_icon.svg"
+done
+test -f "$FS/usr/share/icons/OneBookOS/index.theme" || { echo "Missing OneBookOS theme metadata" >&2; exit 1; }
 install -Dm644 "$ROOT/branding/wallpaper.svg" "$FS/usr/share/backgrounds/onebookos/wallpaper.svg"
 cat > "$FS/etc/casper.conf" <<EOF
 export USERNAME="obos"
