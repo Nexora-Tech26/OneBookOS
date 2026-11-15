@@ -91,7 +91,7 @@ ID_LIKE=debian
 UBUNTU_CODENAME=noble
 HOME_URL="https://github.com/Nexora-Tech26/OneBookOS"
 EOF
-chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center" "$FS/usr/local/bin/obos-gui-smoke"
+chmod +x "$FS/usr/local/bin/obos-welcome" "$FS/usr/local/bin/obos-device-center" "$FS/usr/local/bin/obos-gui-smoke" "$FS/usr/local/bin/obos-recover"
 # Confirm the Casper scripts are present before making a boot image.
 test -f "$FS/usr/share/initramfs-tools/scripts/casper" || { echo 'Missing casper initramfs hook' >&2; exit 1; }
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
