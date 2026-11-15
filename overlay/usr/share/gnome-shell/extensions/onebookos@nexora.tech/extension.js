@@ -40,6 +40,7 @@ export default class OneBookDesktop extends Extension {
         this._connect(Main.layoutManager, 'monitors-changed', () => this._relayout());
         for (const actor of [this._dock, this._notch, this._startMenu])
             this._connect(actor, 'notify::width', () => this._relayout());
+        this._connect(this._startMenu, 'notify::height', () => this._relayout());
         this._connect(global.stage, 'captured-event', (_stage, event) => {
             if (!this._menuOpen)
                 return Clutter.EVENT_PROPAGATE;
@@ -54,10 +55,12 @@ export default class OneBookDesktop extends Extension {
             }
             return Clutter.EVENT_PROPAGATE;
         });
+        this._connect(Shell.AppSystem.get_default(), 'app-state-changed', () => this._refreshRunning());
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () => {
             if (this._startMenu)
                 this._refreshApps();
         });
+        this._refreshRunning();
         this._clockTick();
         this._timers.push(GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => this._clockTick()));
         this._relayout();
@@ -137,6 +140,8 @@ export default class OneBookDesktop extends Extension {
             ['Calculator','org.gnome.Calculator.desktop','calculator'],
             ['System Monitor','org.gnome.SystemMonitor.desktop','monitor'],
         ]) right.add_child(this._button(icon, name, () => this._launch(id)));
+        this._runningApps = new St.BoxLayout({style_class:'obos-running-apps'});
+        right.add_child(this._runningApps);
         const status = this._button('controls', 'Open system settings', () => this._launch('org.gnome.Settings.desktop'));
         right.add_child(status);
         const clock = new St.BoxLayout({vertical: true, style_class: 'obos-clock-box'});
@@ -148,6 +153,21 @@ export default class OneBookDesktop extends Extension {
         this._connect(clockButton, 'clicked', () => Main.panel.statusArea.dateMenu?.menu.toggle());
         right.add_child(clockButton);
         this._dock.add_child(right);
+    }
+    _refreshRunning() {
+        if (!this._runningApps) return;
+        this._runningApps.destroy_all_children();
+        const pinned = new Set(CORE.slice(0,6).map(x => x[1]));
+        let visible = 0;
+        for (const app of Shell.AppSystem.get_default().get_running()) {
+            if (pinned.has(app.get_id()) || visible >= 4) continue;
+            const icon = app.get_icon_texture(28);
+            const button = new St.Button({style_class:'obos-running-button', child: icon,
+                accessible_name: app.get_name(), can_focus:true});
+            this._connect(button,'clicked',() => app.activate());
+            this._runningApps.add_child(button);
+            visible++;
+        }
     }
     _buildMenu() {
         this._startMenu = new St.BoxLayout({
@@ -208,7 +228,7 @@ export default class OneBookDesktop extends Extension {
         const scroll = new St.ScrollView({style_class: 'obos-app-scroll', overlay_scrollbars: true});
         scroll.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC);
         this._appList = new St.BoxLayout({vertical: true, style_class: 'obos-app-list'});
-        scroll.add_actor(this._appList);
+        scroll.set_child(this._appList);
         this._startMenu.add_child(scroll);
         const footer = new St.BoxLayout({style_class: 'obos-menu-footer'});
         footer.add_child(this._text('ONEBOOKOS  •  YOUR SPACE, YOUR FLOW', 'obos-footer-label'));
