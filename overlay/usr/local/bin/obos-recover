@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# OneBookOS desktop rescue mode — run from Ctrl+Alt+F3 as live user 'obos'.
+set -Eeuo pipefail
+echo "Disabling third-party GNOME extensions for the current user…"
+if command -v dbus-run-session >/dev/null && command -v gsettings >/dev/null; then
+  dbus-run-session -- gsettings set org.gnome.shell disable-user-extensions true
+else
+  echo "Cannot use gsettings from this session." >&2
+  exit 1
+fi
+echo "OneBookOS extension disabled for this user. Reboot with: sudo reboot"
