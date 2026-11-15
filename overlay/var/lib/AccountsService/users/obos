@@ -1,4 +1,4 @@
 [User]
-Session=ubuntu
-XSession=ubuntu
+Session=gnome
+XSession=gnome
 SystemAccount=false
