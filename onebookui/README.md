@@ -47,3 +47,9 @@ The CI uses a **package-only Ubuntu 24.04 base** archived at `.onebookui-cache/b
 The live wallpaper SVG is rasterized to 3840×2160 PNG for `swaybg`, icons are generated at 256×256 and downscaled with GdkPixbuf, and installed Wayland-native apps include foot terminal, Thunar file manager and Mousepad editor. Test both the dock and the desktop shortcuts in a real QEMU window: process-alive CI does not guarantee visual design quality or complete application behavior.
 
 The Galaxy Book4 Pro needs **separate hardware testing** for Intel GPU acceleration, audio, Wi-Fi, touchscreen, brightness and HiDPI scaling. The ISO is a Live prototype and should not replace an existing Windows installation.
+
+## OneBookUI Visual Polish Pass 1
+
+Theme: custom `labwc`/Openbox `OneBookUI` titlebar with a 34-pixel flat header, no glossy gradients, a 12-pixel corner radius, and simple high-contrast scalable SVG window controls. The GTK layer-shell dock, desktop shortcuts, clock, menu and control center use smaller dimensions and eliminate button glow/raised 3D effects. The collapsed notch is a blank black capsule; labels appear **only when expanded**. Icons are rendered from SVG at requested widget sizes rather than enlarged from small PNGs.
+
+`onebook-display` requests 1920×1080 only when the VM advertises that mode and retains the preferred physical display mode; a known 2880×1800 panel receives experimental 1.5x scaling. High-DPI fractional scaling, GTK headerbar consistency, animation quality and visual blur require further real-device QA and are not certified by automated process tests. This changes labwc server-side titlebars; GTK apps that draw their own client-side headerbars may still require per-application theming.

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# This script runs after the Wayland socket appears. Do not force laptop modes.
+set -Eeuo pipefail
+command -v wlr-randr >/dev/null || exit 0
+for _ in $(seq 1 12); do
+  if wlr-randr >/dev/null 2>&1; then break; fi
+  sleep 0.25
+done
+INFO="$(wlr-randr 2>/dev/null || true)"
+test -n "$INFO" || exit 0
+OUTPUT="$(printf '%s\n' "$INFO" | awk '/^[^[:space:]]/ {print $1; exit}')"
+test -n "$OUTPUT" || exit 0
+if systemd-detect-virt --vm --quiet; then
+  # The virtual GPU needs to advertise the mode; no unsupported force.
+  if printf '%s\n' "$INFO" | grep -q '1920x1080 px'; then
+    wlr-randr --output "$OUTPUT" --mode 1920x1080 --scale 1.0 || true
+  fi
+elif printf '%s\n' "$INFO" | grep -q '2880x1800 px'; then
+  # Galaxy Book4 Pro 14" internal OLED, use its preferred native mode.
+  # Fractional GTK3 scaling still needs visual QA on actual hardware.
+  wlr-randr --output "$OUTPUT" --scale 1.5 || true
+fi

@@ -12,22 +12,34 @@ from gi.repository import Gtk, Gio, GLib, Gdk, GdkPixbuf, GtkLayerShell
 
 ICON_DIR = Path("/usr/share/onebookos/icons")
 CSS = """
-window { background-color: transparent; color: #eaf0fa; font-family: 'Noto Sans', sans-serif; }
-.box { background: rgba(20,25,37,.96); border-radius: 24px; border: 1px solid rgba(245,248,255,.16); box-shadow: 0 10px 32px rgba(0,0,0,.25); padding: 6px 10px; }
-.start { background: #2679ff; border-radius: 16px; padding: 11px; border: 1px solid rgba(255,255,255,.20); }
-.dock { border-radius: 24px; background: rgba(24,29,43,.92); padding: 8px 14px; border: 1px solid rgba(255,255,255,.12); }
-.launcher { background: transparent; border: 0; border-radius: 15px; padding: 9px; color: #eaf0fa; }
-.launcher:hover { background: rgba(255,255,255,.14); }
-.notch { background: #07090e; border-radius: 0 0 25px 25px; padding: 7px 20px 10px 20px; border: 1px solid #2a2e36; }
-.notch-title { font-weight: bold; color: white; font-size: 12px; }
-.heading { font-weight: 700; font-size: 17px; color: white; }
-.caption { color: #a8b2c7; font-size: 11px; }
-.menu { background: rgba(19,24,36,.98); border-radius: 26px; border: 1px solid rgba(255,255,255,.17); padding: 20px; }
-.menu button { color: white; background: rgba(65,75,96,.50); border: 0; border-radius: 14px; padding: 10px; }
-.menu button:hover { background: rgba(72,110,181,.65); }
-scale trough { background: #384253; border-radius: 8px; min-height: 5px; }
-scale highlight { background: #63a0ff; border-radius: 8px; }
-scale slider { background: #e5efff; border-radius: 50%; min-height: 16px; min-width: 16px; }
+* { -GtkWidget-focus-padding: 0; -GtkWidget-focus-line-width: 0; }
+window { background-color: transparent; color: #ecf2ff; font-family: "Noto Sans", sans-serif; font-size: 12px; }
+button { background-image: none; box-shadow: none; outline: none; text-shadow: none; border: 0; transition: background-color 140ms ease-out; }
+button:focus { outline: none; box-shadow: none; }
+.box { background: rgba(22,27,43,.90); border-radius: 15px; border: 1px solid rgba(245,248,255,.10); padding: 5px 9px; box-shadow: none; }
+.clock { background: rgba(22,27,43,.90); border-radius: 14px; border: 1px solid rgba(245,248,255,.10); padding: 5px 10px; box-shadow: none; }
+.clock-time { font-size: 12px; font-weight: 600; color: #f2f5ff; }
+.clock-date { font-size: 10px; font-weight: 400; color: #b8c3da; }
+.start { background: #477df1; border-radius: 14px; padding: 8px; border: 1px solid rgba(255,255,255,.14); box-shadow: none; }
+.start:hover { background: #5e91f7; }
+.dock { border-radius: 19px; background: rgba(24,29,47,.91); padding: 6px 9px; border: 1px solid rgba(255,255,255,.10); box-shadow: none; }
+.launcher { background: transparent; border: 0; border-radius: 11px; padding: 6px; color: #edf1fc; box-shadow: none; }
+.launcher:hover { background: rgba(255,255,255,.11); box-shadow: none; }
+.desktop-tile { background: transparent; border: 0; border-radius: 12px; padding: 3px; color: #1f304b; box-shadow: none; }
+.desktop-tile:hover { background: rgba(255,255,255,.32); }
+.desktop-label { font-size: 11px; font-weight: 600; color: #1e2946; text-shadow: none; }
+.notch { background: #080a0e; border: 0; border-radius: 0 0 18px 18px; padding: 0 8px 4px 8px; box-shadow: none; }
+.notch-cap { background: transparent; border: 0; min-width: 106px; min-height: 15px; }
+.notch-content { padding: 11px 11px 13px 11px; }
+.heading { font-size: 15px; font-weight: 700; color: #f3f6ff; }
+.caption { color: #b4bed4; font-size: 10px; }
+.menu { background: rgba(24,29,46,.98); border-radius: 21px; border: 1px solid rgba(255,255,255,.11); padding: 14px; box-shadow: none; }
+.menu button { color: #f1f5ff; background: rgba(76,89,117,.40); border: 0; border-radius: 11px; padding: 7px; box-shadow: none; }
+.menu button:hover { background: rgba(82,112,171,.67); }
+scale trough { background: #343e52; border-radius: 8px; min-height: 4px; }
+scale highlight { background: #7ba2f7; border-radius: 8px; }
+scale slider { background: #eef4ff; border-radius: 50%; min-height: 12px; min-width: 12px; border: 0; box-shadow: none; }
+entry { min-height: 24px; background-image: none; border-radius: 10px; }
 """
 def styled(widget, cls):
     widget.get_style_context().add_class(cls)
@@ -46,7 +58,8 @@ def read_cmd(argv):
         return ""
 
 def icon(name, size=24):
-    path = ICON_DIR / (name + ".png")
+    # Rasterize the source SVG at the requested size; avoid upscaling 64px pixmaps.
+    path = ICON_DIR / (name + ".svg")
     if path.is_file():
         try:
             picture = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), size, size, True)
@@ -105,21 +118,21 @@ class Desktop:
         GLib.timeout_add(1800, self.mark_ready)
 
     def create_dock(self):
-        self.dock = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM], 14)
-        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        left = styled(Gtk.Box(spacing=5), "dock")
-        right = styled(Gtk.Box(spacing=5), "dock")
-        self.start_btn = button(icon("onebook", 28), self.toggle_menu, "start", "Start")
+        self.dock = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM], 11)
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+        left = styled(Gtk.Box(spacing=3), "dock")
+        right = styled(Gtk.Box(spacing=3), "dock")
+        self.start_btn = button(icon("onebook", 22), self.toggle_menu, "start", "Start")
         for name, label, cmd in [
             ("files", "OneBook Files", ["/usr/local/bin/onebook-files"]),
             ("terminal", "Terminal", ["foot"]),
         ]:
-            left.pack_start(button(icon(name), lambda c=cmd: spawn(c), tip=label), False, False, 0)
+            left.pack_start(button(icon(name, 22), lambda c=cmd: spawn(c), tip=label), False, False, 0)
         for name, label, cmd in [
             ("settings", "Network Settings", ["nm-connection-editor"]),
             ("monitor", "System Monitor", ["foot", "-e", "top"]),
         ]:
-            right.pack_start(button(icon(name), lambda c=cmd: spawn(c), tip=label), False, False, 0)
+            right.pack_start(button(icon(name, 22), lambda c=cmd: spawn(c), tip=label), False, False, 0)
         outer.pack_start(left, False, False, 0)
         outer.pack_start(self.start_btn, False, False, 0)
         outer.pack_start(right, False, False, 0)
@@ -130,33 +143,33 @@ class Desktop:
         """Lightweight launcher shortcuts, not a full file-manager desktop."""
         self.desktop = layer_window(
             GtkLayerShell.Layer.BOTTOM,
-            [GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.LEFT], 28
+            [GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.LEFT], 18
         )
-        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
         for name, title, command in [
             ("files", "Files", ["/usr/local/bin/onebook-files"]),
             ("terminal", "Terminal", ["foot"]),
             ("notes", "Notes", ["mousepad"]),
             ("settings", "Network", ["nm-connection-editor"]),
         ]:
-            tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-            tile.pack_start(icon(name, 56), False, False, 0)
-            caption = Gtk.Label(label=title)
+            tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            tile.pack_start(icon(name, 40), False, False, 0)
+            caption = styled(Gtk.Label(label=title), "desktop-label")
             caption.set_max_width_chars(13)
             tile.pack_start(caption, False, False, 0)
-            b = button(tile, lambda cmd=command: spawn(cmd), tip=title)
-            b.set_size_request(92, 95)
+            b = button(tile, lambda cmd=command: spawn(cmd), "desktop-tile", tip=title)
+            b.set_size_request(72, 73)
             col.pack_start(b, False, False, 0)
         self.desktop.add(col)
 
     def create_clock(self):
         self.clock_win = layer_window(
             GtkLayerShell.Layer.TOP,
-            [GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.RIGHT], 18
+            [GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.RIGHT], 11
         )
-        clock_box = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1), "box")
-        self.time_label = Gtk.Label()
-        self.date_label = styled(Gtk.Label(), "caption")
+        clock_box = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0), "clock")
+        self.time_label = styled(Gtk.Label(), "clock-time")
+        self.date_label = styled(Gtk.Label(), "clock-date")
         clock_box.pack_start(self.time_label, False, False, 0)
         clock_box.pack_start(self.date_label, False, False, 0)
         self.clock_win.add(clock_box)
@@ -164,19 +177,21 @@ class Desktop:
     def create_notch(self):
         self.notch_win = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.TOP])
         eb = Gtk.EventBox()
-        panel = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "notch")
-        heading = styled(Gtk.Label(label="●  OneBookOS  ·  System Hub"), "notch-title")
-        panel.pack_start(heading, False, False, 0)
+        panel = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0), "notch")
+        # Closed state is an entirely blank black capsule with no text.
+        cap = styled(Gtk.Box(), "notch-cap")
+        cap.set_size_request(106, 15)
+        panel.pack_start(cap, False, False, 0)
         self.reveal = Gtk.Revealer()
         self.reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
         self.reveal.set_transition_duration(260)
-        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        body = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7), "notch-content")
         title = styled(Gtk.Label(label="Control Center"), "heading")
         body.pack_start(title, False, False, 0)
         self.net_label = Gtk.Label(label="Network: checking")
         body.pack_start(self.net_label, False, False, 0)
         self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
-        self.volume.set_size_request(290, -1)
+        self.volume.set_size_request(245, -1)
         self.volume.set_value_pos(Gtk.PositionType.RIGHT)
         self.volume.connect("value-changed", self.set_volume)
         body.pack_start(Gtk.Label(label="Volume"), False, False, 0)
@@ -200,10 +215,10 @@ class Desktop:
     def create_menu(self):
         self.menu_win = layer_window(
             GtkLayerShell.Layer.OVERLAY,
-            [GtkLayerShell.Edge.BOTTOM], 84, keyboard=True
+            [GtkLayerShell.Edge.BOTTOM], 67, keyboard=True
         )
-        menu = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14), "menu")
-        menu.set_size_request(380, 390)
+        menu = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9), "menu")
+        menu.set_size_request(320, 320)
         menu.pack_start(styled(Gtk.Label(label="OneBookOS  ·  Applications"), "heading"), False, False, 0)
         self.search = Gtk.SearchEntry()
         self.search.set_placeholder_text("Search installed applications")
@@ -219,7 +234,7 @@ class Desktop:
         menu.pack_start(scroller, True, True, 0)
         bottom = Gtk.Box(spacing=6)
         bottom.pack_start(button(Gtk.Label(label="Files"), lambda: spawn(["/usr/local/bin/onebook-files"])), True, True, 0)
-        bottom.pack_start(button(Gtk.Label(label="Terminal"), lambda: spawn(["xterm"])), True, True, 0)
+        bottom.pack_start(button(Gtk.Label(label="Terminal"), lambda: spawn(["foot"])), True, True, 0)
         bottom.pack_start(button(Gtk.Label(label="Power off"), lambda: spawn(["systemctl", "poweroff"])), True, True, 0)
         menu.pack_start(bottom, False, False, 0)
         self.menu_win.add(menu)
@@ -239,7 +254,7 @@ class Desktop:
             label.set_max_width_chars(13)
             label.set_ellipsize(3)
             b = button(label, lambda a=app: self.launch_app(a))
-            b.set_size_request(112, 48)
+            b.set_size_request(95, 39)
             self.app_flow.add(b)
         self.app_flow.show_all()
 
@@ -260,6 +275,9 @@ class Desktop:
             self.menu_win.hide()
 
     def open_notch(self, *_args):
+        if self.notch_close_id:
+            GLib.source_remove(self.notch_close_id)
+            self.notch_close_id = 0
         self.reveal.set_reveal_child(True)
         return False
 

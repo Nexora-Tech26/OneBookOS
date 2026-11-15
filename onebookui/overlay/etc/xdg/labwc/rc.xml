@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <labwc_config>
- <theme><name>Default</name><cornerRadius>10</cornerRadius></theme>
- <keyboard>
-  <keybind key="A-F4"><action name="Close"/></keybind>
-  <keybind key="A-Tab"><action name="NextWindow"/></keybind>
-  <keybind key="W-Return"><action name="Execute" command="xterm"/></keybind>
-  <keybind key="W-e"><action name="Execute" command="/usr/local/bin/onebook-files"/></keybind>
- </keyboard>
+  <core><decoration>server</decoration><reuseOutputMode>yes</reuseOutputMode></core>
+  <theme>
+    <name>OneBookUI</name>
+    <icon>Adwaita</icon>
+    <cornerRadius>12</cornerRadius>
+    <titlebar><layout>icon:iconify,max,close</layout><showTitle>yes</showTitle></titlebar>
+    <font place="ActiveWindow"><name>Noto Sans</name><size>10</size><weight>normal</weight></font>
+    <font place="InactiveWindow"><name>Noto Sans</name><size>10</size><weight>normal</weight></font>
+    <dropShadows>no</dropShadows>
+  </theme>
+  <keyboard>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-Return"><action name="Execute" command="foot"/></keybind>
+    <keybind key="W-e"><action name="Execute" command="/usr/local/bin/onebook-files"/></keybind>
+  </keyboard>
 </labwc_config>
