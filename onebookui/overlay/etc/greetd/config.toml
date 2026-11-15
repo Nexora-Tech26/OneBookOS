@@ -1,10 +1,14 @@
 [terminal]
-# VT7 avoids contending with the system console getty on VT1.
+# Live desktop on VT7, not the system's VT1 login console.
 vt = 7
-# Live ISO only: installer must remove automatic login.
+
+# The Casper Live user 'obos' logs straight into the OneBookUI desktop.
 [initial_session]
 command = "/usr/local/bin/onebook-session"
 user = "obos"
+
+# A valid fallback user MUST exist: 'greeter' is not installed in this ISO.
+# If the initial session exits, relaunch the UI instead of showing text login.
 [default_session]
-command = "agreety --cmd /usr/local/bin/onebook-session"
-user = "greeter"
+command = "/usr/local/bin/onebook-session"
+user = "obos"

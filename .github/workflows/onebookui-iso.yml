@@ -35,6 +35,7 @@ jobs:
           shellcheck -e SC2016 onebookui/build/*.sh onebookui/overlay/usr/local/bin/onebook-session onebookui/overlay/usr/local/bin/onebook-gui-smoke onebookui/overlay/etc/xdg/labwc/autostart
           python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell onebookui/overlay/usr/local/bin/onebook-files
           python3 -c 'import xml.etree.ElementTree as ET; ET.parse("onebookui/overlay/etc/xdg/labwc/rc.xml")'
+          python3 -c 'import tomllib; c=tomllib.load(open("onebookui/overlay/etc/greetd/config.toml","rb")); assert c["initial_session"] == {"command": "/usr/local/bin/onebook-session", "user": "obos"}; assert c["default_session"] == {"command": "/usr/local/bin/onebook-session", "user": "obos"}; print("Live auto-login and fallback configuration: OK")'
       - name: Build native Wayland Live ISO
         run: sudo bash onebookui/build/build-iso.sh
       - name: Verify boot image and checksum
