@@ -1,0 +1,23 @@
+[Unit]
+Description=Headless OneBookUI Wayland session for QEMU integration test
+After=basic.target systemd-user-sessions.service
+Wants=systemd-user-sessions.service
+ConditionKernelCommandLine=obos.test=1
+StartLimitIntervalSec=25
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=obos
+Group=obos
+RuntimeDirectory=onebookui-smoke
+RuntimeDirectoryMode=0700
+Environment=XDG_RUNTIME_DIR=/run/onebookui-smoke
+Environment=XDG_CONFIG_DIRS=/etc/xdg
+ExecStart=/usr/local/bin/onebook-session
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=40
+
+[Install]
+WantedBy=multi-user.target

@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
+# OneBookUI session runner shared by greetd and headless CI.
 set -Eeuo pipefail
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=OneBookUI
 export XDG_SESSION_DESKTOP=onebookui
+export GDK_BACKEND=wayland
 export GTK_THEME=Adwaita
-if grep -qE '(^|[[:space:]])obos\\.test=1([[:space:]]|$)' /proc/cmdline;then
- export WLR_BACKENDS=headless
- export WLR_HEADLESS_OUTPUTS=1
- export WLR_RENDERER=pixman
- export WLR_LIBINPUT_NO_DEVICES=1
+if grep -qE '(^|[[:space:]])obos\.test=1([[:space:]]|$)' /proc/cmdline; then
+  export WLR_BACKENDS=headless
+  export WLR_HEADLESS_OUTPUTS=1
+  export WLR_RENDERER=pixman
+  export WLR_LIBINPUT_NO_DEVICES=1
 fi
-exec dbus-run-session -- labwc
+# Save actual compositor stderr. The QEMU smoke check prints this on failures.
+{
+  printf '[OneBookSession] user=%s runtime=%s backend=%s\n' "$(id -un)" "${XDG_RUNTIME_DIR:-unset}" "${WLR_BACKENDS:-auto}"
+  printf '[OneBookSession] starting labwc compositor\n'
+} >> /tmp/onebook-session.log
+exec dbus-run-session -- labwc >> /tmp/onebook-session.log 2>&1

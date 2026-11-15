@@ -1,5 +1,6 @@
 [terminal]
-vt = 1
+# VT7 avoids contending with the system console getty on VT1.
+vt = 7
 # Live ISO only: installer must remove automatic login.
 [initial_session]
 command = "/usr/local/bin/onebook-session"

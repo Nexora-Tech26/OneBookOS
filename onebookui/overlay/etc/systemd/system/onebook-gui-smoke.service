@@ -1,11 +1,13 @@
 [Unit]
-Description=OneBookUI independent Wayland QEMU smoke test
-After=greetd.service
-Wants=greetd.service
+Description=Verify real OneBookUI compositor and shell in headless QEMU
+Requires=onebook-headless.service
+After=onebook-headless.service
 ConditionKernelCommandLine=obos.test=1
+
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/onebook-gui-smoke
-TimeoutStartSec=350
+TimeoutStartSec=240
+
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target

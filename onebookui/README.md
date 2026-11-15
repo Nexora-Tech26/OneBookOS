@@ -23,3 +23,9 @@ The test extracts the kernel and initrd **from the built ISO** and passes `obos.
 ## Source-of-truth work plan
 
 The 12-part master prompt remains the roadmap, not a claim that every feature works. Keep this pipeline experimental until its smoke test and real UI inspection pass. The earlier GNOME ISO workflow is retained separately as a recovery baseline.
+
+## Headless QEMU session reliability
+
+With `obos.test=1`, systemd skips greetd (which can compete with `getty@tty1` on the CI virtual console) and starts the **same** OneBook session launcher through `onebook-headless.service`, as user `obos` with its own `RuntimeDirectory`. The test verifies the actual `labwc` process, Wayland socket, custom `onebook-shell` process, shell ready file, and 25 seconds of sustained activity. A failed session prints the real compositor and shell logs to the QEMU serial console.
+
+Normal Live boots still start greetd on VT7, and they have **not** been validated by the headless CI test. Real display output, interaction, and installed-system login need a separate graphical QEMU/hardware test.
