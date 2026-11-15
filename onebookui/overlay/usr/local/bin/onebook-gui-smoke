@@ -5,7 +5,7 @@ SOCK='/run/onebookui-smoke/wayland-0'
 READY='/run/onebookui-smoke/onebook-shell-ready'
 ok=0
 # Fail early on compositor crash. A simple boot to the login prompt is NEVER success.
-for attempt in $(seq 1 170); do
+for _ in $(seq 1 170); do
   if pgrep -u obos -x labwc >/dev/null && \
      pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
      test -S "$SOCK" && test -s "$READY"; then
@@ -47,6 +47,6 @@ fi
   ls -lah /run/onebookui-smoke || true
   echo '--- user and processes ---'
   id obos || true
-  ps auxww | grep -E 'labwc|onebook-shell|onebook-session|greetd' | grep -v grep || true
+  pgrep -a -f 'labwc|onebook-shell|onebook-session|greetd' || true
 } > /dev/ttyS0 2>&1
 exit 1
