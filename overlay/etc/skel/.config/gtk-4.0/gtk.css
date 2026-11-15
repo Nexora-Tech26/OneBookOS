@@ -1,0 +1,8 @@
+/* OneBookOS 0.2 GNOME / GTK4 accents. Libadwaita may ignore some selectors. */
+window {color:#253150;}
+headerbar {background:linear-gradient(120deg,rgba(242,247,255,.98),rgba(235,233,252,.98));border-bottom:1px solid #d7e0f3;}
+button {border-radius:13px;transition:background 150ms ease;}
+button:hover {background-color:rgba(143,161,225,.16);}
+button.suggested-action {background:linear-gradient(115deg,#5b97ef,#8577e8);color:white;}
+entry, searchentry {border-radius:14px;}
+popover > contents {border-radius:19px;}
