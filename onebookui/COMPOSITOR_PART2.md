@@ -14,3 +14,7 @@ Graphical QEMU now opens real `foot`, `xterm` (XWayland), `thunar` and `mousepad
 
 ## Not complete
 GPU acceleration, blur, touch gestures, multi-monitor hotplug, high-DPI on Galaxy Book4 Pro, and consistent visual quality all remain unverified on physical hardware. The system is still an experimental Live ISO, not a safe OS replacement.
+
+## Real screenshot QA
+
+The QEMU `graphical` test now captures the virtual GPU framebuffer through QEMU's HMP `screendump`, checks that the image is at least 800×600 and not near-monochrome, and publishes `OneBookUI-graphical-qemu.png`. The `OneBookUI-Part2-compositor-QA` artifact contains screenshot and guest logs, even if the compositor test fails. This **does not** validate text sharpness, window aesthetics, GPU performance, touch or blur; the screenshot must be reviewed by a human. The ISO artifact is uploaded only after graphical and headless tests pass.

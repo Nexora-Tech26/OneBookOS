@@ -38,6 +38,8 @@ jobs:
           shellcheck -e SC2016 onebookui/build/*.sh onebookui/overlay/usr/local/bin/onebook-session onebookui/overlay/usr/local/bin/onebook-gui-smoke onebookui/overlay/etc/xdg/labwc/autostart
           python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell onebookui/overlay/usr/local/bin/onebook-files onebookui/overlay/usr/local/bin/onebook-display
           python3 onebookui/overlay/usr/local/bin/onebook-display --self-test
+          python3 -m py_compile onebookui/build/qemu-screenshot.py
+          python3 onebookui/build/qemu-screenshot.py --self-test
           python3 -c 'import xml.etree.ElementTree as ET; r=ET.parse("onebookui/overlay/etc/xdg/labwc/rc.xml").getroot(); assert r.findtext("./theme/name") == "OneBookUI"; assert r.find("./theme/titlebar") is not None'
           test -s onebookui/overlay/usr/share/themes/OneBookUI/gtk-3.0/gtk.css
           test -s onebookui/overlay/usr/share/themes/OneBookUI/openbox-3/themerc
@@ -63,6 +65,17 @@ jobs:
           cat "$RUNNER_TEMP/obos-headless.log"
           cat "$RUNNER_TEMP/obos-graphical.log"
           test "$result_a" -eq 0 && test "$result_b" -eq 0
+      - name: Upload graphical QEMU screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookUI-Part2-compositor-QA
+          path: |
+            dist/OneBookUI-graphical-qemu.png
+            ${{ runner.temp }}/obos-headless.log
+            ${{ runner.temp }}/obos-graphical.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload verified ISO and checksum
         uses: actions/upload-artifact@v4
         with:

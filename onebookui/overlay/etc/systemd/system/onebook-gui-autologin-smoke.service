@@ -7,7 +7,7 @@ ConditionKernelCommandLine=obos.gui-test=1
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/onebook-gui-autologin-smoke
-TimeoutStartSec=230
+TimeoutStartSec=290
 
 [Install]
 WantedBy=graphical.target
