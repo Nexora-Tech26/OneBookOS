@@ -23,10 +23,13 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Free image build space
-        run: |
-          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache /usr/share/dotnet /usr/local/share/powershell /opt/ghc || true
-          df -h .
+      - name: Inspect build space
+        run: df -h .
+      - name: Restore package-only Ubuntu rootfs cache
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: onebookui-noble-amd64-base-zstd-v1-${{ hashFiles('onebookui/build/base-packages.txt') }}
       - name: Install ISO tools and QEMU
         run: sudo bash onebookui/build/install-deps.sh
       - name: Syntax and structural checks
@@ -43,10 +46,19 @@ jobs:
           xorriso -indev dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso -report_el_torito plain
           xorriso -indev dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso -ls /casper
           (cd dist && sha256sum -c SHA256SUMS-onebookui)
-      - name: Boot and verify compositor and shell in QEMU
-        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso
-      - name: Boot and verify normal graphical auto-login in QEMU
-        run: bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso graphical
+      - name: Verify Wayland and graphical desktop in parallel QEMU sessions
+        run: |
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso headless > "$RUNNER_TEMP/obos-headless.log" 2>&1 &
+          a=$!
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-OneBookUI-0.3-preview-amd64.iso graphical > "$RUNNER_TEMP/obos-graphical.log" 2>&1 &
+          b=$!
+          set +e
+          wait "$a"; result_a=$?
+          wait "$b"; result_b=$?
+          set -e
+          cat "$RUNNER_TEMP/obos-headless.log"
+          cat "$RUNNER_TEMP/obos-graphical.log"
+          test "$result_a" -eq 0 && test "$result_b" -eq 0
       - name: Upload verified ISO and checksum
         uses: actions/upload-artifact@v4
         with:

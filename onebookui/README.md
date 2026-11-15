@@ -39,3 +39,11 @@ The GitHub pipeline includes an independent `graphical` QEMU mode (`obos.gui-tes
 ## Greetd Live user requirement (QEMU regression)
 
 The user `greeter` is intentionally not installed in this minimal Live ISO. Greetd validates its `[default_session]` user even when `[initial_session]` is configured. An absent `greeter` user causes greetd to exit immediately with `start-limit-hit`, so neither the compositor nor the UI starts. Both greetd sessions therefore run `/usr/local/bin/onebook-session` as Casper's Live user `obos`. A static TOML check is part of CI and the `graphical` QEMU test must verify actual logged-in UI processes before publication. Installed systems must switch to real account management and authentication before release.
+
+## Faster iteration and visual baseline
+
+The CI uses a **package-only Ubuntu 24.04 base** archived at `.onebookui-cache/base-rootfs.tar.zst` and reused by GitHub Actions when `base-packages.txt` is unchanged. On cache hit, `debootstrap` and package installation are skipped; only current shell sources and assets are overlaid. SquashFS uses zstd compression and independent QEMU headless and graphical checks run in parallel. The initial cache-miss build remains slower; **5–8 minutes is a target, not a guaranteed runtime**.
+
+The live wallpaper SVG is rasterized to 3840×2160 PNG for `swaybg`, icons are generated at 256×256 and downscaled with GdkPixbuf, and installed Wayland-native apps include foot terminal, Thunar file manager and Mousepad editor. Test both the dock and the desktop shortcuts in a real QEMU window: process-alive CI does not guarantee visual design quality or complete application behavior.
+
+The Galaxy Book4 Pro needs **separate hardware testing** for Intel GPU acceleration, audio, Wi-Fi, touchscreen, brightness and HiDPI scaling. The ISO is a Live prototype and should not replace an existing Windows installation.
