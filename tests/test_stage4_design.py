@@ -37,6 +37,7 @@ class DesignTests(unittest.TestCase):
         c = TOKENS["colors"]
         self.assertGreaterEqual(contrast(c["text_on_dark"], c["shell_surface"]), 7)
         self.assertGreaterEqual(contrast(c["app_text"], c["app_surface"]), 7)
+        self.assertGreaterEqual(contrast(c["panel_text"], c["panel_light"]), 7)
         self.assertGreaterEqual(contrast(c["text_on_dark"], c["notch_black"]), 7)
 
     def test_original_icon_inventory(self):
@@ -86,7 +87,7 @@ class DesignTests(unittest.TestCase):
     def test_wallpaper_and_window_buttons(self):
         wp = ET.parse(ROOT / "branding/wallpaper.svg").getroot()
         self.assertTrue(wp.tag.endswith("svg"))
-        self.assertIn("#16295E", (ROOT / "branding/wallpaper.svg").read_text())
+        self.assertIn("#FF9CEF", (ROOT / "branding/wallpaper.svg").read_text())
         directory = ROOT / "onebookui/overlay/usr/share/themes/OneBookUI/openbox-3"
         for kind in ("close", "iconify", "max", "max_toggled"):
             for status in ("active", "inactive"):
