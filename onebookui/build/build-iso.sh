@@ -135,8 +135,13 @@ for d in dev proc sys run tmp; do
   if mountpoint -q "$FS/$d"; then echo "Mounted rootfs directory: $d" >&2; exit 1; fi
 done
 chmod 1777 "$FS/tmp"
-# zstd substantially shortens UI iteration compared with multi-minute XZ compression.
-mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp zstd -Xcompression-level 6 -b 1M -noappend
+# Fast developer-preview compression. Level 3 uses less CPU than 6 while
+# preserving kernel-compatible zstd and the same filesystem contents.
+# Release builds may select level 6 with ONEBOOK_SQUASHFS_LEVEL=6.
+SQUASHFS_LEVEL="${ONEBOOK_SQUASHFS_LEVEL:-3}"
+case "$SQUASHFS_LEVEL" in 1|2|3|4|5|6|7|8|9|10) ;; *) echo "Invalid SquashFS level" >&2; exit 2 ;; esac
+echo "[OneBookUI] SquashFS zstd level=$SQUASHFS_LEVEL, processors=$(nproc)"
+time mksquashfs "$FS" "$CD/casper/filesystem.squashfs" -comp zstd -Xcompression-level "$SQUASHFS_LEVEL" -b 1M -noappend
 cp "$ROOT/onebookui/build/grub.cfg" "$CD/boot/grub/grub.cfg"
 echo 'Experimental Live ISO. Disk installer not implemented.' > "$CD/README.txt"
 (cd "$CD" && find . -type f ! -name md5sum.txt -print0 | sort -z | xargs -0 md5sum) > "$CD/md5sum.txt"

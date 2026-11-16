@@ -44,3 +44,18 @@
 - Advanced widget API, deep personalization, animated transitions and application
   integration remain part of Stages 8–10.
 - This is a Live ISO developer preview, not a tested disk installer.
+
+## Faster GitHub ISO builds (Stage 7 hotfix)
+
+- The workflow now restores a cached **package-only** Ubuntu 24.04 rootfs and saves
+  it **immediately after ISO creation**, before any QEMU checks. A failing GUI
+  smoke test therefore cannot prevent future runs from reusing the expensive base.
+- The cache key includes the package manifest; bump the recipe version `v3`
+  when the base-installation recipe changes. GitHub caches are branch scoped.
+- SquashFS uses zstd level 3 by default (previously 6). Override with
+  `ONEBOOK_SQUASHFS_LEVEL=6` for higher compression at release time.
+- First build with a cold cache still requires downloading/installing Ubuntu.
+  Cache hits only avoid the package-bootstrap stage; they do not bypass ISO
+  creation, GRUB validation or real QEMU boot tests.
+- GTK3 widgets explicitly pin `Gdk 3.0` before importing GI repositories.
+  This corrects the observed QEMU `Gdk 4.0 is already loaded` crash.

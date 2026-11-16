@@ -20,6 +20,23 @@ class Stage7Tests(unittest.TestCase):
         classes = {n.name for n in tree.body if isinstance(n, ast.ClassDef)}
         self.assertTrue({"Widget", "WidgetsDesktop"} <= classes)
 
+    def test_gtk3_gdk_version_is_pinned_before_import(self):
+        # Regression: QEMU failed with "Gdk 4.0 is already loaded".
+        self.assertIn('gi.require_version("Gdk", "3.0")', SRC)
+        self.assertLess(SRC.index('gi.require_version("Gdk", "3.0")'),
+                        SRC.index("from gi.repository import"))
+        self.assertIn("from gi.repository import Gtk, Gdk, GLib, GtkLayerShell", SRC)
+
+    def test_fast_iso_cache_is_saved_before_qemu(self):
+        workflow = (ROOT / ".github/workflows/stage7-iso.yml").read_text()
+        self.assertIn("actions/cache/restore@v4", workflow)
+        self.assertIn("actions/cache/save@v4", workflow)
+        self.assertLess(workflow.index("actions/cache/save@v4"),
+                        workflow.index("Baseline headless compositor regression"))
+        self.assertIn("onebookui/build/base-packages.txt", workflow)
+        builder = (ROOT / "onebookui/build/build-iso.sh").read_text()
+        self.assertIn('ONEBOOK_SQUASHFS_LEVEL:-3', builder)
+
     def test_real_data_and_persistence(self):
         for phrase in ('/proc/stat', '/proc/meminfo', '/sys/class/power_supply',
                        'playerctl', 'api.open-meteo.com', 'timeout=5',

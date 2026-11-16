@@ -25,11 +25,21 @@ jobs:
     timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
-      - name: Restore reusable Ubuntu Noble package base
-        uses: actions/cache@v4
+      # Explicit restore + save: a later QEMU failure must never lose the
+      # expensive Ubuntu base. Increment 'v3' if the package recipe changes.
+      - name: Restore Ubuntu 24.04 package-only rootfs
+        id: rootfs-cache
+        uses: actions/cache/restore@v4
         with:
           path: .onebookui-cache/base-rootfs.tar.zst
-          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+          key: onebookos-noble-amd64-rootfs-v3-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Report base cache state
+        run: |
+          if [ "${{ steps.rootfs-cache.outputs.cache-hit }}" = true ]; then
+            echo 'CACHE HIT: skip debootstrap and apt package installation'
+          else
+            echo 'CACHE MISS: first build prepares and saves the Ubuntu package base'
+          fi
       - name: Install QEMU and builder
         run: sudo bash onebookui/build/install-deps.sh
       - name: Validate wallpaper, widget code, existing shell and recovery regressions
@@ -40,7 +50,23 @@ jobs:
           python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-widgets onebookui/overlay/usr/local/bin/onebook-shell
           bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-widgets-smoke
       - name: Build OneBookOS 0.1.7 Live ISO
-        run: sudo bash display-engine/build-stage7-iso.sh
+        run: |
+          echo "ISO_BUILD_STARTED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          time sudo bash display-engine/build-stage7-iso.sh
+      # Save BEFORE any QEMU smoke tests. Even a failed UI test retains the
+      # reusable package base for the next run on this branch.
+      - name: Check generated rootfs cache is readable
+        if: steps.rootfs-cache.outputs.cache-hit != 'true'
+        run: |
+          test -s .onebookui-cache/base-rootfs.tar.zst
+          sudo chmod a+r .onebookui-cache/base-rootfs.tar.zst
+          ls -lh .onebookui-cache/base-rootfs.tar.zst
+      - name: Save package rootfs cache immediately
+        if: steps.rootfs-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: ${{ steps.rootfs-cache.outputs.cache-primary-key }}
       - name: Verify GRUB layout and ISO SHA256
         run: |
           set -euo pipefail
