@@ -116,6 +116,11 @@ if [[ "$PASS" == 1 ]]; then
   echo "PASS: $MODE $COMPOSITOR Wayland desktop boot and sustained shell activity in QEMU"
   exit 0
 fi
+# On a regression also save real framebuffer evidence instead of only a serial log.
+if [[ "$MODE" == widgets || "$MODE" == widgets-manager ]]; then
+  FAILURE_SHOT="$(dirname "$ISO")/OneBookUI-stage7-failed-${MODE}-qemu.png"
+  python3 "$(dirname "$0")/qemu-screenshot.py" "$TEMP/monitor.sock" "$FAILURE_SHOT" || true
+fi
 echo "FAIL: $MODE $COMPOSITOR OneBookUI Wayland boot was not verified" >&2
 echo '--- Last 220 lines of guest serial output ---' >&2
 tail -220 "$LOG" >&2 || true

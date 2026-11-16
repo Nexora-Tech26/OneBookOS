@@ -5,7 +5,22 @@ echo ONEBOOK_WIDGETS_QEMU_STARTED > /dev/ttyS0
 uid="$(id -u obos)"
 runtime="/run/user/$uid"
 ok=0
-for _ in $(seq 1 225); do
+for step in $(seq 1 160); do
+  if ((step == 30 || step == 75 || step == 125)); then
+    {
+      echo "ONEBOOK_WIDGETS_PROGRESS_$step"
+      echo '--- widget process ---'
+      pgrep -a -f '/usr/local/bin/onebook-widgets' || true
+      echo '--- widget startup log ---'
+      tail -65 /tmp/onebook-widgets.log || true
+      echo '--- shell startup log ---'
+      tail -30 /tmp/onebook-shell-guardian.log || true
+      echo '--- Wayland session ---'
+      tail -20 /tmp/onebook-session.log || true
+      echo '--- markers ---'
+      ls -l "$runtime"/onebook-*ready "$runtime"/wayland-0 2>&1 || true
+    } > /dev/ttyS0 2>&1
+  fi
   if systemctl is-active --quiet greetd.service && \
      pgrep -u obos -x labwc >/dev/null && \
      pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
