@@ -7,7 +7,7 @@
   <theme>
     <name>OneBookUI</name>
     <icon>Adwaita</icon>
-    <cornerRadius>12</cornerRadius>
+    <cornerRadius>8</cornerRadius>
     <titlebar><layout>icon:iconify,max,close</layout><showTitle>yes</showTitle></titlebar>
     <font place="ActiveWindow"><name>Noto Sans</name><size>10</size><weight>normal</weight></font>
     <font place="InactiveWindow"><name>Noto Sans</name><size>10</size><weight>normal</weight></font>

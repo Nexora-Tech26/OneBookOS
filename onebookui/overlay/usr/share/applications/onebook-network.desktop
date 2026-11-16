@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Network Connections
+Exec=nm-connection-editor
+Type=Application
+Icon=network-wireless
+Categories=Settings;Network;
+Terminal=false

@@ -2,10 +2,10 @@
 @import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained.css");
 window, dialog { color: {{app_text}}; background-color: {{app_surface}}; font-family: "Noto Sans"; font-size: {{app_body_font_px}}px; }
 headerbar, .titlebar {
-  background-image: linear-gradient(to bottom, #F7F8FF, {{app_header}});
+  background-image: none;
   background-color: {{app_header}};
   color: {{app_text}}; border: 0; border-bottom: 1px solid {{border_light}};
-  border-radius: 13px 13px 0 0; box-shadow: none; text-shadow: none;
+  border-radius: 8px 8px 0 0; box-shadow: none; text-shadow: none;
   min-height: {{titlebar_height_px}}px; padding: 0 12px;
 }
 headerbar:backdrop, .titlebar:backdrop { background-image: none; background-color: #F1F4FA; color: {{app_muted}}; }
@@ -39,3 +39,8 @@ list row, row { min-height: 34px; padding: 4px; }
 spinbutton button, combobox button { min-height: 34px; min-width: 34px; }
 toolbar button { min-height: 34px; min-width: 34px; }
 scrollbar slider { min-width: 8px; min-height: 8px; }
+
+/* Stage 6: avoid mismatched paint in rounded GTK window corners. */
+decoration { background-color: {{app_surface}}; border: 1px solid {{border_light}}; border-radius: 8px 8px 0 0; box-shadow: none; }
+window.csd headerbar, window.csd .titlebar { background-color: {{app_header}}; }
+window.ssd headerbar, window.ssd .titlebar { border-radius: 0; }

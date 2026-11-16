@@ -83,3 +83,24 @@ button:focus { outline-color: {{accent_light}}; outline-style: solid; outline-wi
 scale trough { background-color: #3A4867; border-radius: 8px; min-height: 5px; }
 scale highlight { background-color: {{accent_blue}}; border-radius: 8px; }
 scale slider { background-color: {{text_on_dark}}; border: 0; border-radius: 50%; min-height: 15px; min-width: 15px; }
+
+/* Stage 6 polish: compact hub; six real tabs never stretch the window. */
+.notch { border-radius: 0 0 22px 22px; background-color: {{notch_black}}; padding: 0 5px 3px; }
+.notch-content { padding: 11px 12px 13px; min-width: 0; }
+.notch-heading { margin-bottom: 1px; }
+.notch-heading .notch-chip { padding: 5px 9px; border-radius: 9px; }
+.notch-tabs { margin-bottom: 4px; }
+.notch-tabs button {
+  border: 0; border-radius: 9px; padding: 5px 2px;
+  min-height: 29px; font-size: 11px;
+  color: {{text_muted}}; background-color: transparent;
+}
+.notch-tabs button:checked {
+  background-color: rgba(137,155,239,0.25);
+  color: {{text_on_dark}};
+}
+.notch-page { padding: 7px 2px 2px; min-height: 124px; }
+.notch-section-title { color: {{text_on_dark}}; font-size: 16px; font-weight: 700; }
+.notch-page .notch-chip { min-height: 31px; padding: 8px 10px; }
+.notch-page scale trough { min-height: 6px; }
+.notch-page scale slider { min-height: 17px; min-width: 17px; }

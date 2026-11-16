@@ -98,7 +98,10 @@ class Desktop:
         GLib.timeout_add_seconds(1, self.tick)
         GLib.timeout_add(2000, self.mark_ready)
         # During QEMU screenshot QA, display the real launcher for visual inspection.
-        if "obos.gui-test=1" in Path("/proc/cmdline").read_text(encoding="utf-8"):
+        cmdline = Path("/proc/cmdline").read_text(encoding="utf-8")
+        if "obos.notch-test=1" in cmdline:
+            GLib.timeout_add(3500, self.preview_notch_for_qa)
+        elif "obos.gui-test=1" in cmdline:
             GLib.timeout_add(5000, self.preview_menu_for_qa)
 
     def monitor_width(self):
@@ -147,7 +150,7 @@ class Desktop:
             left.pack_start(control, False, False, 0)
             self.left_buttons.append(control)
         for name, label, command in (
-            ("settings", "Network settings", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
             ("monitor", "System monitor", ["foot", "-e", "top"]),
         ):
             control = button(icon(name, 30), lambda c=command: spawn(c), tip=label)
@@ -202,8 +205,8 @@ class Desktop:
         for name, title, command in [
             ("files", "Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
-            ("notes", "Notes", ["mousepad"]),
-            ("settings", "Network", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
+            ("monitor", "Task Manager", ["xfce4-taskmanager"]),
         ]:
             tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             tile.pack_start(icon(name, 54), False, False, 0)
@@ -228,70 +231,299 @@ class Desktop:
         self.clock_win.add(clock_box)
         GtkLayerShell.set_exclusive_zone(self.clock_win, 0)
 
+    def hub_line(self, parent, text="Checking...", style="notch-subtitle"):
+        label = styled(Gtk.Label(label=text, xalign=0), style)
+        label.set_line_wrap(True)
+        label.set_max_width_chars(57)
+        parent.pack_start(label, False, False, 0)
+        return label
+
+    def hub_action(self, parent, name, command=None, callback=None):
+        if callback is None:
+            callback = lambda c=command: spawn(c)
+        control = button(Gtk.Label(label=name), callback, "notch-chip")
+        parent.pack_start(control, False, False, 0)
+        return control
+
+    def hub_row(self, parent):
+        row = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8), "notch-row")
+        parent.pack_start(row, False, False, 0)
+        return row
+
+    def hub_section(self, title, hint):
+        box = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "notch-page")
+        self.hub_line(box, title, "notch-section-title")
+        self.hub_line(box, hint, "notch-subtitle")
+        return box
+
     def create_notch(self):
+        """One integrated, top-centered 6-page system hub; no fake toggles."""
         self.notch_pinned = False
         self.notch_collapse_id = 0
         self.notch_win = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.TOP])
-        eb = Gtk.EventBox()
-        # Gtk.Revealer keeps the child's full WIDTH during a vertical slide.
-        # A non-homogeneous Gtk.Stack gives the collapsed notch its own
-        # true compact geometry instead of a 320px empty black rectangle.
+        self.place_on_active_monitor(self.notch_win)
+        GtkLayerShell.set_exclusive_zone(self.notch_win, 0)
+
+        event_box = Gtk.EventBox()
         self.notch_stack = Gtk.Stack()
         self.notch_stack.set_hhomogeneous(False)
         self.notch_stack.set_vhomogeneous(False)
         self.notch_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-        self.notch_stack.set_transition_duration(220)
-        cap = styled(Gtk.Box(), "notch")
-        cap.set_size_request(132, 23)
-        self.notch_stack.add_named(cap, "closed")
+        self.notch_stack.set_transition_duration(200)
 
-        panel = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0), "notch")
+        closed = styled(Gtk.Box(), "notch")
+        closed.set_size_request(112, 22)
+        self.notch_stack.add_named(closed, "closed")
+        expanded = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL), "notch")
         self.reveal = Gtk.Revealer()
         self.reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
-        self.reveal.set_transition_duration(340)
-        body = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "notch-content")
-        heading = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        header_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-        header_text.pack_start(styled(Gtk.Label(label="OneBook Hub", xalign=0), "notch-title"), False, False, 0)
-        header_text.pack_start(styled(Gtk.Label(label="System controls", xalign=0), "notch-subtitle"), False, False, 0)
-        heading.pack_start(header_text, True, True, 0)
-        heading.pack_end(icon("onebook", 32), False, False, 0)
-        body.pack_start(heading, False, False, 0)
-        body.pack_start(styled(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), "notch-divider"), False, False, 0)
-        self.net_label = styled(Gtk.Label(label="Network: checking", xalign=0), "notch-subtitle")
-        body.pack_start(self.net_label, False, False, 0)
-        action_row = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7), "notch-row")
-        action_row.pack_start(button(Gtk.Label(label="Wi-Fi settings"), lambda: spawn(["nm-connection-editor"]), "notch-chip"), True, True, 0)
-        action_row.pack_start(button(Gtk.Label(label="Display"), lambda: spawn(["foot", "-e", "onebook-display", "--list"]), "notch-chip"), True, True, 0)
-        body.pack_start(action_row, False, False, 0)
-        body.pack_start(styled(Gtk.Label(label="Volume", xalign=0), "notch-label"), False, False, 0)
+        self.reveal.set_transition_duration(280)
+        body = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "notch-content")
+        body.set_size_request(min(410, max(270, self.monitor_width() - 46)), -1)
+        head = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10), "notch-heading")
+        self.hub_line(head, "OneBook Hub", "notch-title")
+        self.hub_pin = self.hub_action(head, "Pin", callback=self.toggle_notch_pin)
+        self.hub_settings = self.hub_action(
+            head, "Settings", command=["xfce4-settings-manager"]
+        )
+        body.pack_start(head, False, False, 0)
+
+        self.hub_pages = Gtk.Stack()
+        self.hub_pages.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.hub_pages.set_transition_duration(170)
+        self.hub_pages.set_hhomogeneous(True)
+        self.hub_pages.set_vhomogeneous(False)
+        self.hub_pages.connect("notify::visible-child-name", self.hub_page_changed)
+        # Fixed 6-way tab grid prevents Gtk.StackSwitcher natural width from
+        # stretching the hub into an oversized banner on a desktop.
+        self.hub_tabs = {}
+        tabs = styled(Gtk.Grid(column_spacing=3, row_spacing=3), "notch-tabs")
+        for position, (page_id, label) in enumerate([
+            ("status", "Status"), ("media", "Media"), ("controls", "Sound"),
+            ("connections", "Wi-Fi"), ("devices", "Devices"),
+            ("notifications", "Alerts"),
+        ]):
+            control = styled(Gtk.ToggleButton(label=label), "hub-tab")
+            control.set_size_request(52, 30)
+            control.set_hexpand(True)
+            control.connect(
+                "clicked",
+                lambda _widget, target=page_id: self.hub_pages.set_visible_child_name(target)
+            )
+            columns = 6 if self.monitor_width() >= 660 else 3
+            tabs.attach(control, position % columns, position // columns, 1, 1)
+            self.hub_tabs[page_id] = control
+        body.pack_start(tabs, False, False, 0)
+
+        # Status: use live network, power-supply and system resource information.
+        status = self.hub_section("System status", "Live device information")
+        self.status_network = self.hub_line(status)
+        self.status_battery = self.hub_line(status)
+        self.status_memory = self.hub_line(status)
+        self.hub_pages.add_titled(status, "status", "Status")
+
+        media = self.hub_section("Media", "MPRIS-compatible player controls")
+        self.media_status = self.hub_line(media, "No compatible player detected")
+        media_row = self.hub_row(media)
+        self.hub_action(media_row, "Previous", command=["playerctl", "previous"])
+        self.hub_action(media_row, "Play / pause", command=["playerctl", "play-pause"])
+        self.hub_action(media_row, "Next", command=["playerctl", "next"])
+        self.hub_action(self.hub_row(media), "Sound mixer", command=["pavucontrol"])
+        self.hub_pages.add_titled(media, "media", "Media")
+
+        controls = self.hub_section("System controls", "Connected to PipeWire and backlight devices")
+        self.hub_line(controls, "Volume", "notch-label")
         self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
         self.volume.set_draw_value(False)
-        self.volume.set_size_request(290, -1)
+        self.volume.set_size_request(225, -1)
         self.volume.connect("value-changed", self.set_volume)
-        body.pack_start(self.volume, False, False, 0)
-        body.pack_start(styled(Gtk.Label(label="Brightness", xalign=0), "notch-label"), False, False, 0)
+        controls.pack_start(self.volume, False, False, 0)
+        self.hub_line(controls, "Brightness", "notch-label")
         self.brightness = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 100, 1)
         self.brightness.set_draw_value(False)
         self.brightness.connect("value-changed", self.set_brightness)
-        body.pack_start(self.brightness, False, False, 0)
+        controls.pack_start(self.brightness, False, False, 0)
+        controls_row = self.hub_row(controls)
+        self.mute_button = self.hub_action(controls_row, "Mute / unmute",
+                                           command=["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+        self.hub_action(controls_row, "Sound settings", command=["pavucontrol"])
+        self.hub_pages.add_titled(controls, "controls", "Controls")
+
+        connections = self.hub_section("Connections", "NetworkManager and BlueZ controls")
+        self.wifi_status = self.hub_line(connections)
+        self.wifi_toggle = self.hub_action(
+            self.hub_row(connections), "Wi-Fi", callback=self.toggle_wifi
+        )
+        self.bt_status = self.hub_line(connections)
+        self.bt_toggle = self.hub_action(
+            self.hub_row(connections), "Bluetooth", callback=self.toggle_bluetooth
+        )
+        network_row = self.hub_row(connections)
+        self.hub_action(network_row, "Network", command=["nm-connection-editor"])
+        self.hub_action(network_row, "Bluetooth devices", command=["blueman-manager"])
+        self.hub_pages.add_titled(connections, "connections", "Network")
+
+        devices = self.hub_section("Devices", "Attached hardware and local storage")
+        self.device_battery = self.hub_line(devices)
+        self.device_storage = self.hub_line(devices)
+        self.device_monitor = self.hub_line(devices)
+        device_row = self.hub_row(devices)
+        self.hub_action(device_row, "Task manager", command=["xfce4-taskmanager"])
+        self.hub_action(device_row, "Display details", command=["foot", "-e", "onebook-display", "--list"])
+        self.hub_pages.add_titled(devices, "devices", "Devices")
+
+        notifications = self.hub_section("Notifications", "Active notifications from Mako")
+        self.notification_status = self.hub_line(notifications, "No active notifications")
+        alert_row = self.hub_row(notifications)
+        self.hub_action(alert_row, "Test notification",
+                        command=["notify-send", "OneBookOS", "OneBook Hub notifications work"])
+        self.hub_action(alert_row, "Clear all", callback=self.dismiss_notifications)
+        self.hub_pages.add_titled(notifications, "notifications", "Alerts")
+        self.hub_page_changed()
+
+        body.pack_start(self.hub_pages, False, False, 0)
         self.reveal.add(body)
-        panel.pack_start(self.reveal, False, False, 0)
-        self.notch_stack.add_named(panel, "expanded")
+        expanded.pack_start(self.reveal, False, False, 0)
+        self.notch_stack.add_named(expanded, "expanded")
         self.notch_stack.set_visible_child_name("closed")
-        eb.add(self.notch_stack)
-        eb.connect("enter-notify-event", self.open_notch)
-        eb.connect("leave-notify-event", self.schedule_notch_close)
-        eb.connect("button-press-event", self.toggle_notch_pin)
-        self.notch_win.add(eb)
+        event_box.add(self.notch_stack)
+        event_box.connect("enter-notify-event", self.open_notch)
+        event_box.connect("leave-notify-event", self.schedule_notch_close)
+        self.notch_win.add(event_box)
+        GLib.timeout_add_seconds(5, self.refresh_notch_info)
+
+    def hub_page_changed(self, *_args):
+        current = self.hub_pages.get_visible_child_name()
+        for name, tab in self.hub_tabs.items():
+            if tab.get_active() != (name == current):
+                tab.set_active(name == current)
+        GLib.idle_add(self.refresh_notch_info)
 
     def toggle_notch_pin(self, *_args):
         self.notch_pinned = not self.notch_pinned
+        self.hub_pin.get_child().set_text("Unpin" if self.notch_pinned else "Pin")
         if self.notch_pinned:
             self.open_notch()
         else:
             self.schedule_notch_close()
         return True
+
+    def toggle_wifi(self):
+        current = read_cmd(["nmcli", "radio", "wifi"]).lower()
+        if current in ("enabled", "disabled"):
+            spawn(["nmcli", "radio", "wifi", "off" if current == "enabled" else "on"])
+            GLib.timeout_add(1500, self.refresh_after_action)
+
+    def toggle_bluetooth(self):
+        show = read_cmd(["bluetoothctl", "show"])
+        if "Powered: yes" in show or "Powered: no" in show:
+            new_value = "off" if "Powered: yes" in show else "on"
+            spawn(["bluetoothctl", "power", new_value])
+            GLib.timeout_add(1500, self.refresh_after_action)
+
+    def refresh_after_action(self):
+        self.refresh_notch_info()
+        return False
+
+    def dismiss_notifications(self):
+        spawn(["makoctl", "dismiss", "-a"])
+        GLib.timeout_add(500, self.refresh_after_action)
+
+    def battery_description(self):
+        supplies = Path("/sys/class/power_supply")
+        try:
+            for item in sorted(supplies.glob("BAT*")):
+                capacity = (item / "capacity").read_text().strip()
+                status = (item / "status").read_text().strip()
+                return f"{capacity}% ({status.lower()})"
+        except (OSError, ValueError):
+            pass
+        return "not available (desktop/VM or unsupported)"
+
+    def refresh_notch_info(self):
+        if self.notch_stack.get_visible_child_name() != "expanded":
+            return True
+        page = self.hub_pages.get_visible_child_name()
+        if page == "status":
+            network = read_cmd(["nmcli", "-t", "-f", "STATE", "general"])
+            self.status_network.set_text("Network: " + (network or "unavailable"))
+            self.status_battery.set_text("Battery: " + self.battery_description())
+            try:
+                pages = os.sysconf("SC_PHYS_PAGES")
+                size = os.sysconf("SC_PAGE_SIZE")
+                self.status_memory.set_text(f"Installed RAM: {pages * size / (1024 ** 3):.1f} GiB")
+            except (OSError, ValueError):
+                self.status_memory.set_text("Memory: unavailable")
+        elif page == "media":
+            metadata = read_cmd(["playerctl", "metadata", "--format",
+                                 "{{playerName}} — {{artist}} / {{title}}"])
+            self.media_status.set_text(metadata[:180] if metadata else "No active MPRIS player")
+        elif page == "controls":
+            vol = read_cmd(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+            match = re.search(r"(\d+\.\d+)", vol)
+            self.volume_updating = True
+            if match:
+                self.volume.set_value(min(100, float(match.group(1)) * 100))
+                self.volume.set_sensitive(True)
+            else:
+                self.volume.set_sensitive(False)
+            current = read_cmd(["brightnessctl", "-m"])
+            brightness = re.search(r"(\d+)%", current)
+            if brightness:
+                self.brightness.set_value(int(brightness.group(1)))
+                self.brightness.set_sensitive(True)
+            else:
+                self.brightness.set_sensitive(False)
+            self.volume_updating = False
+            self.mute_button.get_child().set_text(
+                "Unmute" if "[MUTED]" in vol else "Mute"
+            )
+            self.mute_button.set_sensitive(bool(match))
+        elif page == "connections":
+            wifi = read_cmd(["nmcli", "radio", "wifi"]).lower()
+            self.wifi_status.set_text("Wi-Fi: " + (wifi or "unavailable"))
+            self.wifi_toggle.get_child().set_text("Disable Wi-Fi" if wifi == "enabled" else "Enable Wi-Fi")
+            self.wifi_toggle.set_sensitive(wifi in ("enabled", "disabled"))
+            bt = read_cmd(["bluetoothctl", "show"])
+            available = "Powered: yes" in bt or "Powered: no" in bt
+            self.bt_status.set_text("Bluetooth: " +
+                ("on" if "Powered: yes" in bt else "off" if available else "no adapter found"))
+            self.bt_toggle.get_child().set_text("Turn Bluetooth off" if "Powered: yes" in bt else "Turn Bluetooth on")
+            self.bt_toggle.set_sensitive(available)
+        elif page == "devices":
+            self.device_battery.set_text("Battery: " + self.battery_description())
+            try:
+                import shutil
+                usage = shutil.disk_usage("/")
+                self.device_storage.set_text(
+                    f"Storage (live root): {usage.used / (1024 ** 3):.1f} / "
+                    f"{usage.total / (1024 ** 3):.1f} GiB used"
+                )
+            except OSError:
+                self.device_storage.set_text("Storage: unavailable")
+            self.device_monitor.set_text("Display: " + str(self.monitor_width()) + " logical px wide")
+        elif page == "notifications":
+            lines = read_cmd(["makoctl", "list"]).strip()
+            self.notification_status.set_text(
+                lines[:420] if lines else "No active notifications (or Mako unavailable)"
+            )
+        return True
+
+    def preview_notch_for_qa(self):
+        """Expose the real expanded controls surface to graphical QEMU tests."""
+        self.notch_pinned = True
+        self.hub_pin.get_child().set_text("Unpin")
+        self.hub_pages.set_visible_child_name("controls")
+        self.open_notch()
+        self.refresh_notch_info()
+        # Screenshot must wait until the revealer has completed its transition.
+        GLib.timeout_add(800, self.mark_notch_test_ready)
+        return False
+
+    def mark_notch_test_ready(self):
+        path = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "onebook-notch-ready"
+        path.write_text("expanded controls rendered\n", encoding="utf-8")
+        return False
 
     def create_menu(self):
         self.menu_hide_id = 0
@@ -325,7 +557,7 @@ class Desktop:
             ("files", "Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
             ("notes", "Notes", ["mousepad"]),
-            ("settings", "Settings", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
         ]:
             tile = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7), "quick-tile")
             tile.pack_start(icon(name, 38), False, False, 0)
@@ -457,21 +689,6 @@ class Desktop:
     def tick(self):
         self.time_label.set_text(time.strftime("%H:%M"))
         self.date_label.set_text(time.strftime("%d.%m.%Y"))
-        state = read_cmd(["nmcli", "-t", "-f", "STATE", "general"])
-        self.net_label.set_text("Network: " + (state or "unavailable"))
-        vol = read_cmd(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
-        match = re.search(r"(\d+\.\d+)", vol)
-        self.volume_updating = True
-        if match:
-            self.volume.set_value(min(100, float(match.group(1)) * 100))
-        raw = read_cmd(["brightnessctl", "-m"])
-        match = re.search(r"(\d+)%", raw)
-        if match:
-            self.brightness.set_value(int(match.group(1)))
-            self.brightness.set_sensitive(True)
-        else:
-            self.brightness.set_sensitive(False)
-        self.volume_updating = False
         return True
 
     def preview_menu_for_qa(self):
