@@ -66,7 +66,7 @@ if ! test -s "$CACHE"; then
   mount_chroot
 fi
 test ! -e "$FS/usr/bin/gnome-shell" || { echo 'ERROR: GNOME Shell was found in rootfs' >&2; exit 1; }
-for bin in /usr/bin/labwc /usr/bin/wayfire /usr/sbin/greetd /usr/bin/python3 /usr/bin/nmcli /usr/bin/foot /usr/bin/thunar /usr/bin/mousepad; do
+for bin in /usr/bin/labwc /usr/bin/wayfire /usr/sbin/greetd /usr/bin/python3 /usr/bin/nmcli /usr/bin/foot /usr/bin/thunar /usr/bin/mousepad /usr/bin/xfce4-settings-manager /usr/bin/xfce4-taskmanager /usr/bin/pavucontrol /usr/bin/blueman-manager /usr/bin/galculator /usr/bin/ristretto /usr/bin/playerctl /usr/bin/mako /usr/bin/notify-send; do
   test -x "$FS$bin" || { echo "Missing required runtime component: $bin" >&2; exit 1; }
 done
 rsync -a "$ROOT/onebookui/overlay/" "$FS/"
@@ -104,8 +104,8 @@ EOF
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 echo LANG=en_US.UTF-8 > "$FS/etc/default/locale"
 chroot "$FS" systemctl set-default graphical.target
-chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service onebook-gui-autologin-smoke.service onebook-shell-recovery-smoke.service
-for app in onebook-shell-guardian onebook-shell-recover onebook-shell-recovery-smoke onebook-shell onebook-files onebook-session onebook-gui-smoke onebook-gui-autologin-smoke onebook-display onebook-compositor-qa-apps; do
+chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service onebook-gui-autologin-smoke.service onebook-shell-recovery-smoke.service onebook-notch-smoke.service
+for app in onebook-shell-guardian onebook-shell-recover onebook-shell-recovery-smoke onebook-notch-smoke onebook-shell onebook-files onebook-session onebook-gui-smoke onebook-gui-autologin-smoke onebook-display onebook-compositor-qa-apps; do
   chmod 755 "$FS/usr/local/bin/$app"
 done
 chroot "$FS" python3 -m py_compile /usr/local/bin/onebook-shell /usr/local/bin/onebook-shell-guardian /usr/local/bin/onebook-shell-recover /usr/local/bin/onebook-files /usr/local/bin/onebook-display

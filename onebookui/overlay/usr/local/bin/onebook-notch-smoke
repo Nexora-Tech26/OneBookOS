@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Stage 6: verify expanded real GTK Hub, notification daemon and basic apps.
+set -Eeuo pipefail
+echo ONEBOOK_NOTCH_QEMU_STARTED > /dev/ttyS0
+uid="$(id -u obos)"
+runtime="/run/user/$uid"
+ready="$runtime/onebook-notch-ready"
+success=0
+for _ in $(seq 1 240); do
+    if systemctl is-active --quiet greetd.service && \
+       pgrep -u obos -x labwc >/dev/null && \
+       pgrep -u obos -f '/usr/local/bin/onebook-shell$' >/dev/null && \
+       pgrep -u obos -x mako >/dev/null && \
+       test -s "$ready" && test -S "$runtime/wayland-0" && \
+       test -x /usr/bin/xfce4-settings-manager && \
+       test -x /usr/bin/xfce4-taskmanager && test -x /usr/bin/pavucontrol && \
+       pgrep -u obos -f 'xfce4-settings-manager' >/dev/null && \
+       pgrep -u obos -f 'xfce4-taskmanager' >/dev/null && \
+       pgrep -u obos -x pavucontrol >/dev/null; then
+        success=1
+        break
+    fi
+    sleep 1
+done
+if test "$success" -eq 1; then
+    for _ in $(seq 1 8); do
+        if ! pgrep -u obos -x labwc >/dev/null || \
+           ! test -s "$ready" || \
+           ! pgrep -u obos -f '/usr/local/bin/onebook-shell$' >/dev/null; then
+            success=0
+            break
+        fi
+        sleep 1
+    done
+fi
+if test "$success" -eq 1; then
+    echo ONEBOOK_NOTCH_QEMU_OK > /dev/ttyS0
+    exit 0
+fi
+{
+    echo ONEBOOK_NOTCH_FAILED
+    echo '--- session processes ---'
+    pgrep -a -f 'labwc|mako|onebook-shell|xfce4-settings|xfce4-taskmanager|pavucontrol' || true
+    echo '--- shell and compositor logs ---'
+    tail -130 /tmp/onebook-shell.log || true
+    tail -90 /tmp/onebook-shell-guardian.log || true
+    tail -90 /tmp/onebook-settings-qa.log || true
+    tail -90 /tmp/onebook-taskmanager-qa.log || true
+    tail -90 /tmp/onebook-pavucontrol-qa.log || true
+    echo '--- Wayland runtime markers ---'
+    ls -la "$runtime" || true
+} > /dev/ttyS0 2>&1
+exit 1

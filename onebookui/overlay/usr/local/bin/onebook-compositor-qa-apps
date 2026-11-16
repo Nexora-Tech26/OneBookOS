@@ -12,4 +12,11 @@ foot -e sh -c 'sleep 270' > /tmp/onebook-foot-qa.log 2>&1 &
 xterm -T 'OneBookOS XWayland' -e sh -c 'sleep 270' > /tmp/onebook-xterm-qa.log 2>&1 &
 thunar > /tmp/onebook-thunar-qa.log 2>&1 &
 mousepad > /tmp/onebook-mousepad-qa.log 2>&1 &
+# Stage 6: verify the real installed (temporary) settings and task manager apps.
+if grep -qE '(^|[[:space:]])obos\.notch-test=1([[:space:]]|$)' /proc/cmdline; then
+  xfce4-settings-manager > /tmp/onebook-settings-qa.log 2>&1 &
+  xfce4-taskmanager > /tmp/onebook-taskmanager-qa.log 2>&1 &
+  pavucontrol > /tmp/onebook-pavucontrol-qa.log 2>&1 &
+  echo '[Compositor QA] launched basic Settings, Task Manager and Sound'
+fi
 echo '[Compositor QA] launched foot, XWayland xterm, Thunar and Mousepad'
