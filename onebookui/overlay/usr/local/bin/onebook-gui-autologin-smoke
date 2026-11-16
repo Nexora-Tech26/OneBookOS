@@ -44,6 +44,30 @@ if test "$ok" -eq 1; then
   done
 fi
 if test "$ok" -eq 1; then
+  # Stage 5: verify geometry reported by the running Wayland shell.
+  # This is a layout contract, not a pixel-perfect screenshot comparison.
+  if ! python3 - "$RUNTIME/onebook-layout.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+f = Path(sys.argv[1])
+if not f.is_file():
+    raise SystemExit("OneBook Shell did not publish layout information")
+p = json.loads(f.read_text())
+assert p["monitor_width"] >= 320, p
+assert p["start_center_error"] <= 0.5, p
+assert p["clock_x"] + p["clock_width"] + p["clock_margin"] == p["monitor_width"], p
+assert p["start_x"] + p["start_width"] <= p["clock_x"] or p["monitor_width"] < 580, p
+assert p["surface_allocations"]["start"] >= 60, p
+if p["show_right"]:
+    assert p["right_x"] + p["segment_width"] + 14 <= p["clock_x"], p
+print("OneBookUI centered Start, separated bars and right clock: OK", p)
+PY
+  then
+    ok=0
+  fi
+fi
+if test "$ok" -eq 1; then
   echo ONEBOOK_APP_WAYLAND_XWAYLAND_OK > /dev/ttyS0
   echo ONEBOOK_GUI_AUTOLOGIN_OK > /dev/ttyS0
   exit 0

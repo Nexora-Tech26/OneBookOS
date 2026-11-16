@@ -1,5 +1,5 @@
 border.width: 1
-padding.height: 4
+padding.height: 6
 titlebar.height: {{titlebar_height_px}}
 window.active.border.color: #AEBFE2
 window.inactive.border.color: #CED9EB
@@ -8,9 +8,9 @@ window.inactive.title.bg.color: #F2F4FA
 window.active.label.text.color: {{app_text}}
 window.inactive.label.text.color: {{app_muted}}
 window.label.text.justify: Left
-window.button.width: 20
-window.button.height: 20
-window.button.spacing: 6
+window.button.width: {{window_control_px}}
+window.button.height: {{window_control_px}}
+window.button.spacing: 9
 window.active.button.unpressed.image.color: #4C5B80
 window.inactive.button.unpressed.image.color: #9BA8C0
 menu.items.bg.color: {{app_surface}}
