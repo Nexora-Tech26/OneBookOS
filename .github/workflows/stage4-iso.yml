@@ -1,0 +1,101 @@
+name: Stage 04 — OneBookUI 8 Design System Live ISO
+
+on:
+  push:
+    branches: [feature/stage-04-design-system]
+    paths:
+      - ui-kit/**
+      - branding/wallpaper.svg
+      - onebookui/**
+      - display-engine/build-stage4-iso.sh
+      - tests/test_stage4_design.py
+      - .github/workflows/stage4-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage4-iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-design-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show disk space
+        run: df -h .
+      - name: Restore package base cache
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install Ubuntu ISO and QEMU tools
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Verify canonical design assets and previous regression tests
+        run: |
+          set -euo pipefail
+          python3 ui-kit/build.py --check
+          python3 -m unittest discover -s tests -p test_stage4_design.py -v
+          python3 -m unittest discover -s tests -p test_stage3_shell.py -v
+          python3 -m unittest discover -s tests -p test_display_engine.py -v
+          python3 -m unittest discover -s tests -p test_foundation.py -v
+          bash -n onebookui/build/*.sh display-engine/*.sh
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell ui-kit/build.py
+          shellcheck -e SC2016 display-engine/build-stage4-iso.sh
+      - name: Build OneBookUI 8 design Live ISO
+        run: sudo bash display-engine/build-stage4-iso.sh
+      - name: Validate boot image, checksum and generated assets
+        run: |
+          set -euo pipefail
+          ISO=dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso
+          xorriso -indev "$ISO" -report_el_torito plain
+          xorriso -indev "$ISO" -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage4)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Headless labwc QEMU startup
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/labwc-headless.log
+      - name: Graphical labwc QEMU + real screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso graphical labwc 2>&1 | tee dist/labwc-graphical.log
+      - name: Shell crash recovery regression QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso recovery labwc 2>&1 | tee dist/labwc-recovery.log
+      - name: Experimental Wayfire graphical QA
+        id: wayfire
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso graphical wayfire 2>&1 | tee dist/wayfire-graphical.log
+      - name: Log optional Wayfire failure
+        if: always()
+        run: |
+          echo "Wayfire test: ${{ steps.wayfire.outcome }}"
+          if [[ "${{ steps.wayfire.outcome }}" != success ]]; then
+            echo "::warning::Wayfire remains experimental and is not approved."
+          fi
+      - name: Upload real desktop screenshots and QA logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage04-Visual-QA
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload verified test ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage04-Live-ISO
+          path: |
+            dist/OneBookOS-0.1.4-DesignSystem-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage4
+          if-no-files-found: error
+          retention-days: 7

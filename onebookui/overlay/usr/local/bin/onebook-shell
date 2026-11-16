@@ -11,55 +11,8 @@ gi.require_version("GtkLayerShell", "0.1")
 from gi.repository import Gtk, Gio, GLib, Gdk, GdkPixbuf, GtkLayerShell
 
 ICON_DIR = Path("/usr/share/onebookos/icons")
-CSS = """
-* { -GtkWidget-focus-padding: 0; -GtkWidget-focus-line-width: 0; }
-window { background-color: transparent; color: #f5f7ff; font-family: "Noto Sans", sans-serif; font-size: 12px; }
-button { background-image: none; background-color: transparent; box-shadow: none; outline: none; text-shadow: none; border: 0; transition: background-color 180ms ease-out; }
-button:focus { outline: none; box-shadow: none; }
-.dock-shell { background: rgba(22,27,43,.95); border: 1px solid rgba(248,250,255,.13); border-radius: 25px; padding: 7px 10px; box-shadow: 0 7px 24px rgba(25,31,55,.23); }
-.dock-segment { background: transparent; padding: 0 5px; }
-.dock-separator { background: rgba(255,255,255,.13); min-width: 1px; margin: 9px 7px; }
-.launcher { background: transparent; border: 0; border-radius: 13px; padding: 10px; color: #f8faff; }
-.launcher:hover { background: rgba(238,242,255,.15); }
-.launcher:active { background: rgba(238,242,255,.24); }
-.start { background: #6695f9; color: #fff; border-radius: 17px; border: 1px solid rgba(255,255,255,.18); padding: 10px; margin: 0 2px; }
-.start:hover { background: #7ba7ff; }
-.start:active { background: #4275e3; }
-.clock { background: rgba(22,27,43,.93); border-radius: 18px; border: 1px solid rgba(248,250,255,.13); padding: 10px 16px; }
-.clock-time { font-size: 14px; font-weight: 700; color: #ffffff; }
-.clock-date { font-size: 10px; color: #cad4e6; }
-.desktop-tile { background: transparent; border: 0; border-radius: 18px; padding: 8px 5px; color: #26354f; }
-.desktop-tile:hover { background: rgba(255,255,255,.34); }
-.desktop-label { font-size: 11px; font-weight: 700; color: #26354f; text-shadow: 0 1px rgba(255,255,255,.6); }
-.notch { background: #090c13; border-radius: 0 0 23px 23px; border: 0; padding: 0 9px 5px 9px; }
-.notch-cap { background: transparent; min-width: 126px; min-height: 24px; }
-.notch-content { padding: 13px 17px 17px 17px; min-width: 305px; }
-.notch-title { color: #ffffff; font-size: 15px; font-weight: 700; }
-.notch-subtitle { color: #aeb9d1; font-size: 11px; }
-.notch-row { margin: 4px 0 5px 0; }
-.notch-label { color: #d6dff1; font-size: 11px; font-weight: 600; }
-.notch-chip { background: rgba(255,255,255,.105); color: #fff; border-radius: 12px; padding: 10px 12px; border: 0; }
-.notch-chip:hover { background: rgba(123,160,244,.29); }
-.notch-divider { background: rgba(255,255,255,.1); min-height: 1px; margin: 9px 0; }
-.menu { background: rgba(24,31,49,.98); border: 1px solid rgba(250,252,255,.14); border-radius: 28px; padding: 24px; box-shadow: 0 8px 36px rgba(18,22,38,.26); }
-.menu-title { color: #ffffff; font-size: 24px; font-weight: 800; }
-.menu-subtitle { color: #b9c8e0; font-size: 12px; }
-.menu-section { color: #e8efff; font-size: 13px; font-weight: 700; margin-top: 5px; }
-.menu-divider { background: rgba(240,244,255,.12); min-height: 1px; margin: 2px 0 6px 0; }
-.menu searchentry, .menu entry { background-image: none; background-color: rgba(239,244,255,.13); color: #ffffff; border: 1px solid rgba(255,255,255,.14); border-radius: 15px; padding: 10px 13px; min-height: 24px; box-shadow: none; caret-color: white; }
-.menu searchentry:focus, .menu entry:focus { border-color: #83a8ff; }
-.app-tile { background: transparent; color: #f4f7ff; border: 0; border-radius: 16px; padding: 9px 3px; }
-.app-tile:hover { background: rgba(255,255,255,.12); }
-.app-name { color: #f0f3fd; font-size: 11px; }
-.quick-tile { background: rgba(255,255,255,.075); border-radius: 15px; padding: 10px 8px; }
-.quick-tile:hover { background: rgba(255,255,255,.15); }
-.quick-label { color: #eef3ff; font-size: 12px; font-weight: 600; }
-.menu-footer button { background: rgba(255,255,255,.09); border: 0; border-radius: 12px; padding: 9px 15px; color: #f7f9ff; }
-.menu-footer button:hover { background: rgba(255,255,255,.17); }
-scale trough { background: #3c475e; border-radius: 8px; min-height: 5px; }
-scale highlight { background: #82a9ff; border-radius: 8px; }
-scale slider { background: #f4f7ff; border-radius: 50%; min-height: 15px; min-width: 15px; border: 0; box-shadow: none; }
-"""
+THEME_CSS = Path("/usr/share/onebookos/design/shell.css")
+
 
 def styled(widget, cls):
     widget.get_style_context().add_class(cls)
@@ -116,7 +69,7 @@ def button(child, callback, cls="launcher", tip=None):
 class Desktop:
     def __init__(self):
         css = Gtk.CssProvider()
-        css.load_from_data(CSS.encode())
+        css.load_from_path(str(THEME_CSS))
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
@@ -318,7 +271,7 @@ class Desktop:
         menu.pack_start(scroller, True, True, 0)
         menu.pack_start(styled(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), "menu-divider"), False, False, 0)
         footer = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9), "menu-footer")
-        footer.pack_start(styled(Gtk.Label(label="OneBookOS 0.3  ·  Preview", xalign=0), "menu-subtitle"), True, True, 0)
+        footer.pack_start(styled(Gtk.Label(label="OneBookOS · Developer Preview", xalign=0), "menu-subtitle"), True, True, 0)
         footer.pack_end(button(Gtk.Label(label="Power"), lambda: spawn(["systemctl", "poweroff"])), False, False, 0)
         footer.pack_end(button(Gtk.Label(label="Log out"), lambda: spawn(["loginctl", "terminate-user", os.environ.get("USER", "obos")])), False, False, 0)
         menu.pack_start(footer, False, False, 0)

@@ -79,11 +79,9 @@ install -Dm644 "$ROOT/branding/wallpaper.svg" "$FS/usr/share/backgrounds/onebook
 # swaybg is reliably raster-backed; generate a high-resolution image from the source SVG.
 rsvg-convert -w 3840 -h 2160 "$ROOT/branding/wallpaper.svg" -o "$FS/usr/share/backgrounds/onebookos/wallpaper.png"
 test -s "$FS/usr/share/backgrounds/onebookos/wallpaper.png"
-for source in "$ROOT/overlay/usr/share/gnome-shell/extensions/onebookos@nexora.tech/icons/"*.svg; do
-  name="$(basename "$source" .svg)"
-  install -m644 "$source" "$FS/usr/share/onebookos/icons/$name.svg"
-  rsvg-convert -w 256 -h 256 "$source" -o "$FS/usr/share/onebookos/icons/$name.png"
-done
+# Generate all original OneBookUI assets from one token and SVG source.
+python3 "$ROOT/ui-kit/build.py" --root "$FS"
+test -s "$FS/usr/share/onebookos/design/shell.css"
 for required in files terminal settings onebook; do
   test -s "$FS/usr/share/onebookos/icons/$required.png"
 done
