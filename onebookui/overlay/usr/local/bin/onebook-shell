@@ -272,14 +272,14 @@ class Desktop:
         self.notch_stack.set_transition_duration(200)
 
         closed = styled(Gtk.Box(), "notch")
-        closed.set_size_request(132, 24)
+        closed.set_size_request(112, 22)
         self.notch_stack.add_named(closed, "closed")
         expanded = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL), "notch")
         self.reveal = Gtk.Revealer()
         self.reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
         self.reveal.set_transition_duration(280)
         body = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "notch-content")
-        body.set_size_request(min(460, max(320, self.monitor_width() - 30)), -1)
+        body.set_size_request(min(410, max(270, self.monitor_width() - 46)), -1)
         head = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10), "notch-heading")
         self.hub_line(head, "OneBook Hub", "notch-title")
         self.hub_pin = self.hub_action(head, "Pin", callback=self.toggle_notch_pin)
@@ -294,8 +294,25 @@ class Desktop:
         self.hub_pages.set_hhomogeneous(True)
         self.hub_pages.set_vhomogeneous(False)
         self.hub_pages.connect("notify::visible-child-name", self.hub_page_changed)
-        tabs = styled(Gtk.StackSwitcher(), "notch-tabs")
-        tabs.set_stack(self.hub_pages)
+        # Fixed 6-way tab grid prevents Gtk.StackSwitcher natural width from
+        # stretching the hub into an oversized banner on a desktop.
+        self.hub_tabs = {}
+        tabs = styled(Gtk.Grid(column_spacing=3, row_spacing=3), "notch-tabs")
+        for position, (page_id, label) in enumerate([
+            ("status", "Status"), ("media", "Media"), ("controls", "Sound"),
+            ("connections", "Wi-Fi"), ("devices", "Devices"),
+            ("notifications", "Alerts"),
+        ]):
+            control = styled(Gtk.ToggleButton(label=label), "hub-tab")
+            control.set_size_request(52, 30)
+            control.set_hexpand(True)
+            control.connect(
+                "clicked",
+                lambda _widget, target=page_id: self.hub_pages.set_visible_child_name(target)
+            )
+            columns = 6 if self.monitor_width() >= 660 else 3
+            tabs.attach(control, position % columns, position // columns, 1, 1)
+            self.hub_tabs[page_id] = control
         body.pack_start(tabs, False, False, 0)
 
         # Status: use live network, power-supply and system resource information.
@@ -318,7 +335,7 @@ class Desktop:
         self.hub_line(controls, "Volume", "notch-label")
         self.volume = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
         self.volume.set_draw_value(False)
-        self.volume.set_size_request(300, -1)
+        self.volume.set_size_request(225, -1)
         self.volume.connect("value-changed", self.set_volume)
         controls.pack_start(self.volume, False, False, 0)
         self.hub_line(controls, "Brightness", "notch-label")
@@ -362,6 +379,7 @@ class Desktop:
                         command=["notify-send", "OneBookOS", "OneBook Hub notifications work"])
         self.hub_action(alert_row, "Clear all", callback=self.dismiss_notifications)
         self.hub_pages.add_titled(notifications, "notifications", "Alerts")
+        self.hub_page_changed()
 
         body.pack_start(self.hub_pages, False, False, 0)
         self.reveal.add(body)
@@ -375,6 +393,10 @@ class Desktop:
         GLib.timeout_add_seconds(5, self.refresh_notch_info)
 
     def hub_page_changed(self, *_args):
+        current = self.hub_pages.get_visible_child_name()
+        for name, tab in self.hub_tabs.items():
+            if tab.get_active() != (name == current):
+                tab.set_active(name == current)
         GLib.idle_add(self.refresh_notch_info)
 
     def toggle_notch_pin(self, *_args):

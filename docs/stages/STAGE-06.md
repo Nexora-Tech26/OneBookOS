@@ -1,11 +1,11 @@
-# Stage 06/16 — Dynamic Notch and practical starter applications
+# Stage 06/17 — Dynamic Notch and practical starter applications
 
 **Build:** OneBookOS 0.1.6 DynamicNotch Developer Preview — experimental Live ISO.
 
 ## Dynamic Notch
 
 - The closed top-center black capsule has no text. When hovered, it expands into one integrated GTK3 layer surface.
-- Six tabs: Status, Media, Controls, Network, Devices and Alerts. Pin/unpin keeps the hub open.
+- Six tabs: Status, Media, Controls, Network, Devices and Alerts. Pin/unpin keeps the hub open. A compact 112×22 px closed capsule expands to a width-constrained panel. A responsive 6-column (3-column on narrow displays) tab grid prevents oversized panels; the active tab stays synchronized with the GTK stack.
 - Real integrations: NetworkManager via nmcli (Wi-Fi), BlueZ via bluetoothctl (Bluetooth), PipeWire via wpctl (volume/mute), brightnessctl, playerctl for compatible MPRIS media, kernel battery data and Mako notifications.
 - UI disables controls when backlight or Bluetooth hardware cannot be detected. It never generates fake values.
 - Notch updates only its active tab every 5 seconds. The animation uses GTK Revealer and Stack; compositor-level blur is not claimed.

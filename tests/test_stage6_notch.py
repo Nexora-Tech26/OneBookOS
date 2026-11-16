@@ -23,8 +23,11 @@ class Stage6Tests(unittest.TestCase):
         self.assertEqual(names.count("create_notch"), 1)
 
     def test_has_six_real_tab_pages_and_compact_notch(self):
-        self.assertIn('closed.set_size_request(132, 24)', SHELL)
-        self.assertIn("Gtk.StackSwitcher()", SHELL)
+        self.assertIn('closed.set_size_request(112, 22)', SHELL)
+        self.assertIn('body.set_size_request(min(410, max(270, self.monitor_width() - 46)), -1)', SHELL)
+        self.assertIn('Gtk.Grid(column_spacing=3, row_spacing=3)', SHELL)
+        self.assertIn('columns = 6 if self.monitor_width() >= 660 else 3', SHELL)
+        self.assertIn('self.hub_tabs[page_id] = control', SHELL)
         self.assertIn("Gtk.StackTransitionType.SLIDE_LEFT_RIGHT", SHELL)
         for identifier in ("status", "media", "controls", "connections", "devices", "notifications"):
             self.assertIn('self.hub_pages.add_titled(', SHELL)
