@@ -47,7 +47,8 @@ cp -L /etc/resolv.conf "$FS/etc/resolv.conf"
 mount_chroot
 if ! test -s "$CACHE"; then
   chroot "$FS" apt-get update
-  mapfile -t packages < "$ROOT/onebookui/build/base-packages.txt"
+  # Ignore comments and blank lines; comments are not apt package names.
+  mapfile -t packages < <(grep -Ev '^[[:space:]]*(#|$)' "$ROOT/onebookui/build/base-packages.txt")
   chroot "$FS" apt-get install -y --no-install-recommends "${packages[@]}"
   # Do not ship GNOME Shell, even if pulled transitively.
   if chroot "$FS" dpkg-query -W -f='${Status}' gnome-shell 2>/dev/null | grep -q 'install ok installed'; then

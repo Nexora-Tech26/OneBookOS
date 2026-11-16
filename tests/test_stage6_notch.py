@@ -76,6 +76,11 @@ class Stage6Tests(unittest.TestCase):
         self.assertIn("onebook-notch-smoke.service", build)
         self.assertIn("onebook-notch-ready", SHELL)
 
+    def test_package_manifest_ignores_comments_and_blanks(self):
+        builder = (ROOT / "onebookui/build/build-iso.sh").read_text()
+        self.assertIn("grep -Ev", builder)
+        self.assertIn("base-packages.txt", builder)
+
     def test_new_iso_version(self):
         data = (ROOT / "display-engine/build-stage6-iso.sh").read_text()
         self.assertIn("ONEBOOK_VERSION_ID=0.1.6-stage6", data)
