@@ -1,0 +1,101 @@
+name: Stage 05 — Start Taskbars Window Layout and HiDPI Live ISO
+
+on:
+  push:
+    branches: [feature/stage-05-layout]
+    paths:
+      - ui-kit/**
+      - onebookui/**
+      - display-engine/**
+      - tests/test_stage5_layout.py
+      - .github/workflows/stage5-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show available storage
+        run: df -h .
+      - name: Restore package-only base rootfs
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install ISO + VM test dependencies
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Unit tests, UI tokens and source syntax checks
+        run: |
+          set -euo pipefail
+          python3 ui-kit/build.py --check
+          python3 -m unittest discover -s tests -p test_stage5_layout.py -v
+          python3 -m unittest discover -s tests -p test_stage4_design.py -v
+          python3 -m unittest discover -s tests -p test_stage3_shell.py -v
+          python3 -m unittest discover -s tests -p test_display_engine.py -v
+          python3 -m unittest discover -s tests -p test_foundation.py -v
+          bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-gui-autologin-smoke
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell onebookui/overlay/usr/local/lib/onebookos/layout.py
+          shellcheck -e SC2016 display-engine/build-stage5-iso.sh
+      - name: Build Stage 5 Live ISO
+        run: sudo bash display-engine/build-stage5-iso.sh
+      - name: Validate ISO checksum and boot image
+        run: |
+          set -euo pipefail
+          ISO=dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso
+          xorriso -indev "$ISO" -report_el_torito plain
+          xorriso -indev "$ISO" -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage5)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Labwc headless QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/labwc-headless.log
+      - name: Labwc graphical QEMU with geometry QA and actual screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso graphical labwc 2>&1 | tee dist/labwc-graphical.log
+      - name: Regression — shell recovery in QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso recovery labwc 2>&1 | tee dist/labwc-recovery.log
+      - name: Optional Wayfire graphical VM diagnostics
+        id: wayfire
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso graphical wayfire 2>&1 | tee dist/wayfire-graphical.log
+      - name: State optional Wayfire result accurately
+        if: always()
+        run: |
+          echo "Experimental Wayfire VM test: ${{ steps.wayfire.outcome }}"
+          if [[ "${{ steps.wayfire.outcome }}" != success ]]; then
+            echo "::warning::Wayfire QEMU is not validated. Default labwc remains required."
+          fi
+      - name: Upload QEMU screenshots and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage05-Visual-QA
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload validated Live ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage05-Live-ISO
+          path: |
+            dist/OneBookOS-0.1.5-Layout-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage5
+          if-no-files-found: error
+          retention-days: 7

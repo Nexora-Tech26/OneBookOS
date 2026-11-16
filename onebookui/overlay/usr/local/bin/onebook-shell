@@ -1,10 +1,14 @@
 #!/usr/bin/python3
 """OneBookUI native Wayland layer-shell preview (not a GNOME extension)."""
+import json
 import os
 import re
 import subprocess
 import time
 from pathlib import Path
+import sys
+sys.path.insert(0, "/usr/local/lib/onebookos")
+from layout import compute_layout
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("GtkLayerShell", "0.1")
@@ -82,45 +86,112 @@ class Desktop:
         self.create_clock()
         self.create_notch()
         self.create_menu()
-        self.dock.show_all()
+        self.start_win.show_all()
+        self.left_dock.show_all()
+        self.right_dock.show_all()
         self.desktop.show_all()
         self.clock_win.show_all()
         self.notch_win.show_all()
         self.menu_win.hide()
+        self.refresh_layout(force=True)
+        GLib.timeout_add_seconds(2, self.refresh_layout)
         GLib.timeout_add_seconds(1, self.tick)
-        GLib.timeout_add(1800, self.mark_ready)
+        GLib.timeout_add(2000, self.mark_ready)
         # During QEMU screenshot QA, display the real launcher for visual inspection.
         if "obos.gui-test=1" in Path("/proc/cmdline").read_text(encoding="utf-8"):
             GLib.timeout_add(5000, self.preview_menu_for_qa)
 
+    def monitor_width(self):
+        """Wayland monitor geometry uses logical pixels, not raw panel pixels."""
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor()
+        if monitor is None and display.get_n_monitors():
+            monitor = display.get_monitor(0)
+        self.active_monitor = monitor
+        if monitor is not None:
+            return max(320, int(monitor.get_geometry().width))
+        return max(320, Gdk.Screen.get_default().get_width())
+
+    def place_on_active_monitor(self, window):
+        if self.active_monitor is not None and hasattr(GtkLayerShell, "set_monitor"):
+            GtkLayerShell.set_monitor(window, self.active_monitor)
+
     def create_dock(self):
-        # One continuous connected dock. The middle Start remains the exact center.
-        self.dock = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM], 18)
-        outer = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2), "dock-shell")
-        left = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2), "dock-segment")
-        right = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2), "dock-segment")
-        for name, label, command in [
-            ("files", "Files", ["thunar"]), ("terminal", "Terminal", ["foot"]),
-        ]:
-            control = button(icon(name, 27), lambda c=command: spawn(c), tip=label)
-            control.set_size_request(47, 47)
+        """Separate Wayland layer surfaces: left bar, exact-center Start, right bar.
+
+        The clock stays independently anchored to bottom-right so it does not
+        move when the number of running application buttons changes.
+        """
+        self.monitor_width()
+        self.left_dock = layer_window(
+            GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.LEFT], 18
+        )
+        self.right_dock = layer_window(
+            GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.LEFT], 18
+        )
+        self.start_win = layer_window(GtkLayerShell.Layer.TOP, [GtkLayerShell.Edge.BOTTOM], 18)
+        for window in (self.left_dock, self.right_dock, self.start_win):
+            self.place_on_active_monitor(window)
+            GtkLayerShell.set_exclusive_zone(window, 0)
+
+        left = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5), "dock-shell")
+        right = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5), "dock-shell")
+        self.left_buttons = []
+        self.right_buttons = []
+        for name, label, command in (
+            ("files", "Files", ["thunar"]),
+            ("terminal", "Terminal", ["foot"]),
+        ):
+            control = button(icon(name, 30), lambda c=command: spawn(c), tip=label)
+            control.set_size_request(52, 52)
             left.pack_start(control, False, False, 0)
-        self.start_btn = button(icon("onebook", 28), self.toggle_menu, "start", "Start")
-        self.start_btn.set_size_request(50, 50)
-        for name, label, command in [
-            ("settings", "Connections", ["nm-connection-editor"]),
+            self.left_buttons.append(control)
+        for name, label, command in (
+            ("settings", "Network settings", ["nm-connection-editor"]),
             ("monitor", "System monitor", ["foot", "-e", "top"]),
-        ]:
-            control = button(icon(name, 27), lambda c=command: spawn(c), tip=label)
-            control.set_size_request(47, 47)
+        ):
+            control = button(icon(name, 30), lambda c=command: spawn(c), tip=label)
+            control.set_size_request(52, 52)
             right.pack_start(control, False, False, 0)
-        outer.pack_start(left, False, False, 0)
-        outer.pack_start(styled(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), "dock-separator"), False, False, 0)
-        outer.pack_start(self.start_btn, False, False, 0)
-        outer.pack_start(styled(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), "dock-separator"), False, False, 0)
-        outer.pack_start(right, False, False, 0)
-        self.dock.add(outer)
-        GtkLayerShell.auto_exclusive_zone_enable(self.dock)
+            self.right_buttons.append(control)
+
+        self.start_btn = button(icon("onebook", 36), self.toggle_menu, "start", "Start")
+        self.start_btn.set_size_request(62, 62)
+        self.start_btn.set_hexpand(True)
+        self.start_btn.set_vexpand(True)
+        start = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL), "start-shell")
+        start.pack_start(self.start_btn, True, True, 0)
+        self.left_dock.add(left)
+        self.right_dock.add(right)
+        self.start_win.add(start)
+        self.current_layout = None
+
+    def refresh_layout(self, force=False):
+        """Recalculate independent surface placement after resolution changes."""
+        width = self.monitor_width()
+        positions = compute_layout(width)
+        if force or self.current_layout != positions:
+            self.current_layout = positions
+            for window in (self.left_dock, self.right_dock, self.start_win, self.clock_win,
+                           self.notch_win, self.menu_win):
+                self.place_on_active_monitor(window)
+            for window in (self.left_dock, self.right_dock, self.start_win, self.clock_win):
+                GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, positions["bottom_margin"])
+            GtkLayerShell.set_margin(self.left_dock, GtkLayerShell.Edge.LEFT, positions["left_x"])
+            GtkLayerShell.set_margin(self.right_dock, GtkLayerShell.Edge.LEFT, positions["right_x"])
+            GtkLayerShell.set_margin(self.clock_win, GtkLayerShell.Edge.RIGHT, positions["clock_margin"])
+            self.start_win.set_size_request(positions["start_width"], 72)
+            self.left_dock.set_size_request(positions["segment_width"], 70)
+            self.right_dock.set_size_request(positions["segment_width"], 70)
+            self.clock_win.set_size_request(positions["clock_width"], 70)
+            self.left_buttons[1].set_visible(positions["show_second_icon"])
+            self.right_buttons[1].set_visible(positions["show_second_icon"])
+            self.left_dock.set_visible(positions["show_left"])
+            self.right_dock.set_visible(positions["show_right"])
+            GtkLayerShell.set_margin(
+                self.menu_win, GtkLayerShell.Edge.BOTTOM, positions["bottom_margin"] + 84
+            )
+        return True
 
     def create_desktop_shortcuts(self):
         self.desktop = layer_window(
@@ -135,12 +206,12 @@ class Desktop:
             ("settings", "Network", ["nm-connection-editor"]),
         ]:
             tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-            tile.pack_start(icon(name, 47), False, False, 0)
+            tile.pack_start(icon(name, 54), False, False, 0)
             caption = styled(Gtk.Label(label=title), "desktop-label")
             caption.set_max_width_chars(13)
             tile.pack_start(caption, False, False, 0)
             control = button(tile, lambda c=command: spawn(c), "desktop-tile", tip=title)
-            control.set_size_request(88, 91)
+            control.set_size_request(96, 102)
             col.pack_start(control, False, False, 0)
         self.desktop.add(col)
 
@@ -155,6 +226,7 @@ class Desktop:
         clock_box.pack_start(self.time_label, False, False, 0)
         clock_box.pack_start(self.date_label, False, False, 0)
         self.clock_win.add(clock_box)
+        GtkLayerShell.set_exclusive_zone(self.clock_win, 0)
 
     def create_notch(self):
         self.notch_pinned = False
@@ -231,7 +303,11 @@ class Desktop:
         self.menu_reveal.set_transition_type(Gtk.RevealerTransitionType.SLIDE_UP)
         self.menu_reveal.set_transition_duration(270)
         menu = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14), "menu")
-        menu.set_size_request(520, 525)
+        screen = Gdk.Display.get_default().get_primary_monitor()
+        if screen is None:
+            screen = Gdk.Display.get_default().get_monitor(0)
+        area = screen.get_geometry()
+        menu.set_size_request(min(540, max(360, area.width - 64)), min(520, max(360, area.height - 145)))
         title_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         title_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         title_text.pack_start(styled(Gtk.Label(label="OneBookOS", xalign=0), "menu-title"), False, False, 0)
@@ -259,7 +335,7 @@ class Desktop:
         menu.pack_start(favorites, False, False, 0)
         menu.pack_start(styled(Gtk.Label(label="All applications", xalign=0), "menu-section"), False, False, 0)
         scroller = Gtk.ScrolledWindow()
-        scroller.set_size_request(-1, 182)
+        scroller.set_size_request(-1, 158)
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.app_flow = Gtk.FlowBox()
         self.app_flow.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -296,9 +372,9 @@ class Desktop:
             gicon = app.get_icon()
             if gicon:
                 img = Gtk.Image.new_from_gicon(gicon, Gtk.IconSize.DIALOG)
-                img.set_pixel_size(32)
+                img.set_pixel_size(36)
             else:
-                img = icon("onebook", 32)
+                img = icon("onebook", 36)
             tile.pack_start(img, False, False, 0)
             label = styled(Gtk.Label(label=app.get_display_name()), "app-name")
             label.set_line_wrap(True)
@@ -306,7 +382,7 @@ class Desktop:
             label.set_ellipsize(3)
             tile.pack_start(label, False, False, 0)
             control = button(tile, lambda a=app: self.launch_app(a), "app-tile", app.get_display_name())
-            control.set_size_request(102, 78)
+            control.set_size_request(112, 88)
             self.app_flow.add(control)
         self.app_flow.show_all()
 
@@ -408,6 +484,16 @@ class Desktop:
     def mark_ready(self):
         path = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "onebook-shell-ready"
         path.write_text("shell GTK layer surfaces initialized\n", encoding="utf-8")
+        info = dict(self.current_layout)
+        info["surface_allocations"] = {
+            "start": self.start_win.get_allocated_width(),
+            "left": self.left_dock.get_allocated_width(),
+            "right": self.right_dock.get_allocated_width(),
+            "clock": self.clock_win.get_allocated_width(),
+        }
+        (path.parent / "onebook-layout.json").write_text(
+            json.dumps(info, indent=2) + "\n", encoding="utf-8"
+        )
         return False
 
 if __name__ == "__main__":
