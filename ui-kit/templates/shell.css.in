@@ -1,0 +1,83 @@
+/* OneBookUI 8: original desktop theme, generated from ui-kit/tokens.json.
+   The visual UI remains a GTK3/Wayland preview, not a completed Samsung desktop. */
+* { -GtkWidget-focus-padding: 0; -GtkWidget-focus-line-width: 0; }
+window {
+  background-color: transparent;
+  color: {{text_on_dark}};
+  font-family: "Noto Sans", sans-serif;
+  font-size: 12px;
+}
+button { background-image: none; background-color: transparent; box-shadow: none; outline: none; text-shadow: none; border: 0; transition: background-color {{motion_fast_ms}}ms ease-out; }
+button:focus { outline-color: {{accent_light}}; outline-style: solid; outline-width: 1px; }
+.dock-shell {
+  background-color: rgba(22, 31, 62, 0.89);
+  border: 1px solid rgba(232, 239, 255, 0.23);
+  border-radius: 24px; padding: 6px 10px;
+  box-shadow: 0 9px 28px rgba(9, 16, 45, 0.42), inset 0 1px rgba(255,255,255,0.15);
+}
+.dock-segment { background-color: transparent; padding: 0 4px; }
+.dock-separator { background-color: rgba(233,240,255,0.18); min-width: 1px; margin: 9px 6px; }
+.launcher { border-radius: 13px; padding: 8px; }
+.launcher:hover { background-color: rgba(202,216,255,0.20); }
+.launcher:active { background-color: rgba(202,216,255,0.32); }
+.start {
+  background-image: linear-gradient(to bottom right, {{accent_blue}}, {{accent_purple}});
+  color: {{text_on_dark}}; border-radius: 17px; border: 1px solid rgba(255,255,255,0.35);
+  padding: 9px; margin: 0 2px;
+  box-shadow: inset 0 1px rgba(255,255,255,0.31), 0 5px 16px rgba(60,61,145,0.30);
+}
+.start:hover { background-image: linear-gradient(to bottom right, #79A6FF, #A18AF8); }
+.start:active { background-image: linear-gradient(to bottom right, #456DE3, #7354CA); }
+.clock {
+  background-color: rgba(22,31,62,0.91); border-radius: 17px;
+  border: 1px solid rgba(232,239,255,0.22); padding: 9px 15px;
+  box-shadow: 0 6px 18px rgba(9,16,45,0.28);
+}
+.clock-time { font-size: 14px; font-weight: 700; color: {{text_on_dark}}; }
+.clock-date { font-size: 10px; color: {{text_muted}}; }
+.desktop-tile { background-color: transparent; border-radius: 18px; padding: 7px 5px; }
+.desktop-tile:hover { background-color: rgba(234,240,255,0.25); }
+.desktop-label { font-size: 11px; font-weight: 700; color: #F6F9FF; text-shadow: 0 1px 3px rgba(10,21,61,0.78); }
+.notch {
+  background-color: {{notch_black}}; border-radius: 0 0 22px 22px; border: 1px solid rgba(255,255,255,0.045);
+  padding: 0 9px 5px 9px; box-shadow: 0 8px 22px rgba(4,7,24,0.24);
+}
+.notch-cap { background-color: transparent; min-width: 126px; min-height: 23px; }
+.notch-content { padding: 13px 17px 17px 17px; min-width: 305px; }
+.notch-title { color: {{text_on_dark}}; font-size: 15px; font-weight: 700; }
+.notch-subtitle { color: {{text_muted}}; font-size: 11px; }
+.notch-row { margin: 4px 0 5px 0; }
+.notch-label { color: {{text_muted}}; font-size: 11px; font-weight: 600; }
+.notch-chip { background-color: rgba(227,234,255,0.12); color: {{text_on_dark}}; border-radius: 12px; padding: 10px 12px; border: 0; }
+.notch-chip:hover { background-color: rgba(145,171,255,0.27); }
+.notch-divider { background-color: rgba(236,243,255,0.11); min-height: 1px; margin: 9px 0; }
+.menu {
+  background-color: rgba(23,30,59,0.97); color: {{text_on_dark}};
+  border: 1px solid rgba(230,236,255,0.25);
+  border-radius: 26px; padding: 24px;
+  box-shadow: 0 14px 42px rgba(7,11,37,0.50), inset 0 1px rgba(255,255,255,0.11);
+}
+.menu-title { color: {{text_on_dark}}; font-size: 24px; font-weight: 800; }
+.menu-subtitle { color: {{text_muted}}; font-size: 12px; }
+.menu-section { color: {{text_on_dark}}; font-size: 13px; font-weight: 700; margin-top: 5px; }
+.menu-divider { background-color: rgba(236,243,255,0.13); min-height: 1px; margin: 2px 0 6px 0; }
+.menu searchentry, .menu entry {
+  background-image: none; background-color: rgba(228,235,255,0.11); color: {{text_on_dark}};
+  border: 1px solid rgba(236,243,255,0.20); border-radius: 14px;
+  padding: 10px 13px; min-height: 24px; box-shadow: none; caret-color: {{text_on_dark}};
+}
+.menu searchentry:focus, .menu entry:focus { border-color: {{accent_blue}}; }
+.app-tile { background-color: transparent; color: {{text_on_dark}}; border: 0; border-radius: 16px; padding: 9px 3px; }
+.app-tile:hover { background-color: rgba(221,230,255,0.15); }
+.app-name { color: {{text_on_dark}}; font-size: 11px; }
+.quick-tile {
+  background-color: rgba(227,234,255,0.075);
+  border: 1px solid rgba(236,243,255,0.12); border-radius: 15px; padding: 10px 8px;
+}
+.quick-tile:hover { background-color: rgba(221,230,255,0.18); }
+.quick-label { color: {{text_on_dark}}; font-size: 12px; font-weight: 600; }
+.menu-footer button { background-color: rgba(227,234,255,0.11); border: 0; border-radius: 12px; padding: 9px 15px; color: {{text_on_dark}}; }
+.menu-footer button:hover { background-color: rgba(227,234,255,0.21); }
+scale trough { background-color: #3A4867; border-radius: 8px; min-height: 5px; }
+scale highlight { background-color: {{accent_blue}}; border-radius: 8px; }
+scale slider { background-color: {{text_on_dark}}; border: 0; border-radius: 50%; min-height: 15px; min-width: 15px; }
