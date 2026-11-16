@@ -83,3 +83,24 @@ button:focus { outline-color: {{accent_light}}; outline-style: solid; outline-wi
 scale trough { background-color: #3A4867; border-radius: 8px; min-height: 5px; }
 scale highlight { background-color: {{accent_blue}}; border-radius: 8px; }
 scale slider { background-color: {{text_on_dark}}; border: 0; border-radius: 50%; min-height: 15px; min-width: 15px; }
+
+/* Stage 6: black integrated Dynamic Notch, fully responsive GTK3 tabs. */
+.notch { border-radius: 0 0 25px 25px; background-color: {{notch_black}}; }
+.notch-content { padding: 14px 17px 18px; min-width: 320px; }
+.notch-heading { margin-bottom: 3px; }
+.notch-heading .notch-chip { padding: 5px 9px; border-radius: 10px; }
+.notch-tabs { margin-bottom: 6px; }
+.notch-tabs button {
+  border: 0; border-radius: 10px; padding: 8px 6px;
+  min-height: 30px; font-size: 11px;
+  color: {{text_muted}}; background-color: transparent;
+}
+.notch-tabs button:checked {
+  background-color: rgba(137,155,239,0.25);
+  color: {{text_on_dark}};
+}
+.notch-page { padding: 10px 4px 4px; min-height: 152px; }
+.notch-section-title { color: {{text_on_dark}}; font-size: 17px; font-weight: 700; }
+.notch-page .notch-chip { min-height: 36px; }
+.notch-page scale trough { min-height: 7px; }
+.notch-page scale slider { min-height: 19px; min-width: 19px; }
