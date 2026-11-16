@@ -1,0 +1,90 @@
+name: Stage 07 — Wallpaper and Widgets Live ISO
+
+on:
+  push:
+    branches: [feature/stage-07-wallpaper-widgets]
+    paths:
+      - onebookui/**
+      - ui-kit/**
+      - branding/**
+      - display-engine/**
+      - tests/**
+      - .github/workflows/stage7-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore reusable Ubuntu Noble package base
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install QEMU and builder
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Validate wallpaper, widget code, existing shell and recovery regressions
+        run: |
+          set -euo pipefail
+          python3 ui-kit/build.py --check
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-widgets onebookui/overlay/usr/local/bin/onebook-shell
+          bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-widgets-smoke
+      - name: Build OneBookOS 0.1.7 Live ISO
+        run: sudo bash display-engine/build-stage7-iso.sh
+      - name: Verify GRUB layout and ISO SHA256
+        run: |
+          set -euo pipefail
+          ISO=dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso
+          xorriso -indev "$ISO" -report_el_torito plain
+          xorriso -indev "$ISO" -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage7)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Baseline headless compositor regression
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/stage7-headless.log
+      - name: Real default wallpaper and widgets screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso widgets labwc 2>&1 | tee dist/stage7-widgets.log
+      - name: Real widget manager customization screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso widgets-manager labwc 2>&1 | tee dist/stage7-customize.log
+      - name: Legacy expanded Notch regression
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso notch labwc 2>&1 | tee dist/stage7-notch.log
+      - name: Legacy shell recovery regression
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso recovery labwc 2>&1 | tee dist/stage7-recovery.log
+      - name: Store real QEMU screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage07-Real-QEMU-Screenshots
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Publish ISO only after all QEMU tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage07-Live-ISO
+          path: |
+            dist/OneBookOS-0.1.7-Wallpaper-Widgets-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage7
+          if-no-files-found: error
+          retention-days: 7

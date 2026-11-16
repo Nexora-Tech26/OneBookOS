@@ -1,0 +1,13 @@
+[Unit]
+Description=Check OneBookOS Stage 7 desktop widgets in QEMU
+After=greetd.service
+Wants=greetd.service
+ConditionKernelCommandLine=obos.widgets-test=1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/onebook-widgets-smoke
+TimeoutStartSec=290
+
+[Install]
+WantedBy=graphical.target

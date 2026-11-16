@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Verify real widget process, persisted layout contract and normal Wayland session.
+set -Eeuo pipefail
+echo ONEBOOK_WIDGETS_QEMU_STARTED > /dev/ttyS0
+uid="$(id -u obos)"
+runtime="/run/user/$uid"
+ok=0
+for _ in $(seq 1 225); do
+  if systemctl is-active --quiet greetd.service && \
+     pgrep -u obos -x labwc >/dev/null && \
+     pgrep -u obos -f '/usr/local/bin/onebook-shell' >/dev/null && \
+     pgrep -u obos -f '/usr/local/bin/onebook-widgets' >/dev/null && \
+     test -s "$runtime/onebook-shell-ready" && \
+     test -s "$runtime/onebook-widgets-ready" && \
+     test -s "$runtime/onebook-widgets-layout.json" && \
+     test -S "$runtime/wayland-0"; then
+    ok=1
+    break
+  fi
+  sleep 1
+done
+if test "$ok" -eq 1; then
+  if ! python3 - "$runtime/onebook-widgets-layout.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+expected = {"clock", "weather", "calendar", "battery", "media", "system"}
+assert set(data["widgets"]) == expected, data
+assert set(data["visible"]) == expected, data
+assert data["wallpaper"] in {"aurora", "night"}, data
+for item in data["widgets"].values():
+    assert item["size"] in {"small", "medium", "large"}, item
+    assert item["right"] >= 0 and item["top"] >= 0, item
+print("Six real GTK desktop widgets and persisted layout: OK")
+PY
+  then
+    ok=0
+  fi
+fi
+if test "$ok" -eq 1; then
+  sleep 8
+  pgrep -u obos -f '/usr/local/bin/onebook-widgets' >/dev/null || ok=0
+fi
+if test "$ok" -eq 1; then
+  echo ONEBOOK_WIDGETS_QEMU_OK > /dev/ttyS0
+  exit 0
+fi
+{
+  echo ONEBOOK_WIDGETS_FAILED
+  echo '--- widget logs ---'
+  tail -120 /tmp/onebook-widgets.log || true
+  tail -70 /tmp/onebook-shell.log || true
+  tail -70 /tmp/onebook-session.log || true
+  echo '--- graphical processes ---'
+  pgrep -a -f 'greetd|labwc|onebook-shell|onebook-widgets|swaybg' || true
+  echo '--- runtime files ---'
+  ls -lah "$runtime" || true
+} > /dev/ttyS0 2>&1
+exit 1

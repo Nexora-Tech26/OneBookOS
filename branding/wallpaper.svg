@@ -1,18 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160" role="img" aria-label="OneBookOS Aurora Lavender wallpaper">
 <defs>
- <linearGradient id="base" x1="0" y1=".05" x2="1" y2="1"><stop stop-color="#12194B"/><stop offset=".43" stop-color="#484CC1"/><stop offset="1" stop-color="#183CBA"/></linearGradient>
- <radialGradient id="pink"><stop stop-color="#FF9CEF" stop-opacity=".98"/><stop offset=".56" stop-color="#C478E8" stop-opacity=".73"/><stop offset="1" stop-color="#C478E8" stop-opacity="0"/></radialGradient>
- <radialGradient id="cyan"><stop stop-color="#73C6FF" stop-opacity=".83"/><stop offset="1" stop-color="#73C6FF" stop-opacity="0"/></radialGradient>
- <linearGradient id="waveA" x1="0" y1="0" x2=".95" y2=".9"><stop stop-color="#825DEA"/><stop offset=".52" stop-color="#6AA5FD"/><stop offset="1" stop-color="#4C74E7"/></linearGradient>
- <linearGradient id="waveB" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#E58ADC"/><stop offset=".5" stop-color="#A888F0"/><stop offset="1" stop-color="#3F8FEF"/></linearGradient>
- <filter id="mist"><feGaussianBlur stdDeviation="70"/></filter>
+ <linearGradient id="sky" x1="0" y1=".32" x2="1" y2=".86">
+  <stop stop-color="#243976"/><stop offset=".25" stop-color="#607DBE"/>
+  <stop offset=".57" stop-color="#A9B9EF"/><stop offset=".84" stop-color="#DDC2F1"/>
+  <stop offset="1" stop-color="#F0CEF0"/>
+ </linearGradient>
+ <radialGradient id="lilac" cx=".78" cy=".1" r=".65">
+  <stop stop-color="#F7BEEB" stop-opacity=".95"/><stop offset=".54" stop-color="#C5A7F3" stop-opacity=".53"/>
+  <stop offset="1" stop-color="#9885EC" stop-opacity="0"/>
+ </radialGradient>
+ <radialGradient id="glow" cx=".55" cy=".55" r=".6">
+  <stop stop-color="#A1DFFA" stop-opacity=".73"/><stop offset=".72" stop-color="#99CCF7" stop-opacity=".16"/><stop offset="1" stop-color="#93CCF8" stop-opacity="0"/>
+ </radialGradient>
+ <linearGradient id="ribbon1" x1="0" y1="0" x2="1" y2="1">
+  <stop stop-color="#8079DF"/><stop offset=".46" stop-color="#8A9BEF"/><stop offset="1" stop-color="#97C4FB"/>
+ </linearGradient>
+ <linearGradient id="ribbon2" x1="0" y1="0" x2=".9" y2="1">
+  <stop stop-color="#DAB4FA"/><stop offset=".5" stop-color="#AAB9F6"/><stop offset="1" stop-color="#91ABF4"/>
+ </linearGradient>
+ <linearGradient id="ribbon3" x1="0" y1="0" x2="1" y2="1">
+  <stop stop-color="#BDD9FF"/><stop offset=".48" stop-color="#D9BBF3"/><stop offset="1" stop-color="#A5B7F3"/>
+ </linearGradient>
+ <filter id="soft"><feGaussianBlur stdDeviation="70"/></filter>
 </defs>
-<rect width="1920" height="1080" fill="url(#base)"/>
-<ellipse cx="1710" cy="125" rx="970" ry="750" fill="url(#pink)"/>
-<ellipse cx="1130" cy="670" rx="1000" ry="670" fill="url(#cyan)" opacity=".83"/>
-<ellipse cx="-20" cy="880" rx="600" ry="480" fill="#EE8BDF" opacity=".45" filter="url(#mist)"/>
-<path d="M-180 710C130 390 400 255 700 265C1060 275 1195 735 1640 662C1815 635 1960 527 2100 510V1160H-180Z" fill="url(#waveA)" opacity=".73"/>
-<path d="M-180 945C270 638 492 750 840 676C1190 604 1470 490 2080 729V1170H-180Z" fill="url(#waveB)" opacity=".75"/>
-<path d="M-160 1130C140 934 462 870 835 905C1210 948 1560 1005 2090 808V1200H-160Z" fill="#E9B0EF" opacity=".42"/>
-<path d="M-80 894C300 660 526 775 880 680C1275 572 1486 490 1980 608" fill="none" stroke="#E8D1FF" stroke-width="3" opacity=".49"/>
+<rect width="3840" height="2160" fill="url(#sky)"/>
+<rect width="3840" height="2160" fill="url(#lilac)"/>
+<rect width="3840" height="2160" fill="url(#glow)"/>
+<ellipse cx="3120" cy="150" rx="1200" ry="820" fill="#E8B1EE" opacity=".18" filter="url(#soft)"/>
+<ellipse cx="1050" cy="1500" rx="1480" ry="670" fill="#79B6F1" opacity=".26" filter="url(#soft)"/>
+<path d="M-190 1400 C570 720 1040 560 1510 640 C2340 770 2590 1460 3330 1250 C3670 1170 3890 1000 4050 940 L4050 2250 L-190 2250 Z" fill="url(#ribbon1)" opacity=".71"/>
+<path d="M-180 1740 C500 1310 1020 1430 1530 1330 C2170 1190 2760 770 4020 1490 L4050 2240 L-180 2240 Z" fill="url(#ribbon2)" opacity=".91"/>
+<path d="M-180 2010 C700 1580 1110 1730 1740 1690 C2570 1640 3190 2010 4070 1440 L4050 2260 L-180 2260 Z" fill="url(#ribbon3)" opacity=".74"/>
+<path d="M-60 1840 C540 1420 1070 1540 1530 1430 C2240 1290 2830 1140 3910 1490" stroke="#F3EEFF" stroke-width="7" opacity=".5" fill="none"/>
+<path d="M-70 2020 C680 1610 1130 1780 1780 1730 C2660 1660 3200 1970 3940 1690" stroke="#DDF1FF" stroke-width="6" opacity=".38" fill="none"/>
 </svg>

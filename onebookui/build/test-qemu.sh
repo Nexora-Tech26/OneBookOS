@@ -38,6 +38,16 @@ case "$MODE" in
     MARKER='ONEBOOK_NOTCH_QEMU_OK'
     VGA='virtio'
     ;;
+  widgets)
+    TESTARG='obos.widgets-test=1'
+    MARKER='ONEBOOK_WIDGETS_QEMU_OK'
+    VGA='virtio'
+    ;;
+  widgets-manager)
+    TESTARG='obos.widgets-test=1 obos.widgets-customize-test=1'
+    MARKER='ONEBOOK_WIDGETS_QEMU_OK'
+    VGA='virtio'
+    ;;
   *) echo "Unknown QEMU test mode: $MODE" >&2; exit 2 ;;
 esac
 for bin in qemu-system-x86_64 xorriso timeout grep realpath; do
@@ -74,7 +84,7 @@ for _ in $(seq 1 400); do
     PASS=1
     break
   fi
-  if grep -Eiq 'ONEBOOK_WAYLAND_GUI_FAILED|ONEBOOK_GUI_AUTOLOGIN_FAILED|ONEBOOK_NOTCH_FAILED|kernel panic|unable to mount root fs|unable to find a medium containing a live file system' "$LOG" 2>/dev/null; then
+  if grep -Eiq 'ONEBOOK_WAYLAND_GUI_FAILED|ONEBOOK_GUI_AUTOLOGIN_FAILED|ONEBOOK_NOTCH_FAILED|ONEBOOK_WIDGETS_FAILED|kernel panic|unable to mount root fs|unable to find a medium containing a live file system' "$LOG" 2>/dev/null; then
     echo 'Guest reported boot or GUI failure' >&2
     break
   fi
@@ -84,10 +94,14 @@ for _ in $(seq 1 400); do
   fi
   sleep 1
 done
-if [[ "$PASS" == 1 && ( "$MODE" == graphical || "$MODE" == recovery || "$MODE" == notch ) ]]; then
+if [[ "$PASS" == 1 && ( "$MODE" == graphical || "$MODE" == recovery || "$MODE" == notch || "$MODE" == widgets || "$MODE" == widgets-manager ) ]]; then
   # Capture actual graphical pixels, not just a process marker. A blank/absent
   # image must be reported as a failed graphical build.
-  if [[ "$MODE" == notch ]]; then
+  if [[ "$MODE" == widgets ]]; then
+    SHOT="$(dirname "$ISO")/OneBookUI-stage7-widgets-qemu.png"
+  elif [[ "$MODE" == widgets-manager ]]; then
+    SHOT="$(dirname "$ISO")/OneBookUI-stage7-customize-qemu.png"
+  elif [[ "$MODE" == notch ]]; then
     SHOT="$(dirname "$ISO")/OneBookUI-dynamic-notch-qemu.png"
   elif [[ "$MODE" == recovery ]]; then
     SHOT="$(dirname "$ISO")/OneBookUI-shell-recovery-qemu.png"

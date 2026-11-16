@@ -77,9 +77,14 @@ test -s "$FS/usr/share/themes/OneBookUI/openbox-3/themerc"
 mkdir -p "$FS/etc/xdg/autostart" "$FS/var/crash" "$FS/usr/share/backgrounds/onebookos" "$FS/usr/share/onebookos/icons"
 test -x "$FS/usr/bin/glib-compile-schemas" || { echo 'GLib schemas compiler missing' >&2; exit 1; }
 install -Dm644 "$ROOT/branding/wallpaper.svg" "$FS/usr/share/backgrounds/onebookos/wallpaper.svg"
+install -Dm644 "$ROOT/branding/wallpaper-night.svg" "$FS/usr/share/backgrounds/onebookos/wallpaper-night.svg"
 # swaybg is reliably raster-backed; generate a high-resolution image from the source SVG.
 rsvg-convert -w 3840 -h 2160 "$ROOT/branding/wallpaper.svg" -o "$FS/usr/share/backgrounds/onebookos/wallpaper.png"
 test -s "$FS/usr/share/backgrounds/onebookos/wallpaper.png"
+rsvg-convert -w 3840 -h 2160 "$ROOT/branding/wallpaper-night.svg" -o "$FS/usr/share/backgrounds/onebookos/wallpaper-night.png"
+test -s "$FS/usr/share/backgrounds/onebookos/wallpaper-night.png"
+test -s "$FS/usr/share/onebookos/design/widgets.css"
+test -x "$FS/usr/local/bin/onebook-widgets"
 # Generate all original OneBookUI assets from one token and SVG source.
 python3 "$ROOT/ui-kit/build.py" --root "$FS"
 test -s "$FS/usr/share/onebookos/design/shell.css"
@@ -105,11 +110,11 @@ EOF
 chroot "$FS" locale-gen en_US.UTF-8 pl_PL.UTF-8
 echo LANG=en_US.UTF-8 > "$FS/etc/default/locale"
 chroot "$FS" systemctl set-default graphical.target
-chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service onebook-gui-autologin-smoke.service onebook-shell-recovery-smoke.service onebook-notch-smoke.service
-for app in onebook-shell-guardian onebook-shell-recover onebook-shell-recovery-smoke onebook-notch-smoke onebook-shell onebook-files onebook-session onebook-gui-smoke onebook-gui-autologin-smoke onebook-display onebook-compositor-qa-apps; do
+chroot "$FS" systemctl enable greetd NetworkManager onebook-headless.service onebook-gui-smoke.service onebook-gui-autologin-smoke.service onebook-shell-recovery-smoke.service onebook-notch-smoke.service onebook-widgets-smoke.service
+for app in onebook-shell-guardian onebook-shell-recover onebook-shell-recovery-smoke onebook-notch-smoke onebook-shell onebook-files onebook-session onebook-gui-smoke onebook-gui-autologin-smoke onebook-display onebook-compositor-qa-apps onebook-widgets onebook-widgets-smoke; do
   chmod 755 "$FS/usr/local/bin/$app"
 done
-chroot "$FS" python3 -m py_compile /usr/local/bin/onebook-shell /usr/local/bin/onebook-shell-guardian /usr/local/bin/onebook-shell-recover /usr/local/bin/onebook-files /usr/local/bin/onebook-display
+chroot "$FS" python3 -m py_compile /usr/local/bin/onebook-shell /usr/local/bin/onebook-shell-guardian /usr/local/bin/onebook-shell-recover /usr/local/bin/onebook-files /usr/local/bin/onebook-display /usr/local/bin/onebook-widgets
 test -f "$FS/usr/share/initramfs-tools/scripts/casper"
 test -f "$FS/usr/share/wayland-sessions/onebookui.desktop"
 KVER="$(find "$FS/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"

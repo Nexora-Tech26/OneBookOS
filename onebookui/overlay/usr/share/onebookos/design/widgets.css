@@ -1,0 +1,48 @@
+/* Stage 07: OneBookOS native desktop widgets. No fake compositor blur. */
+window { background-color: transparent; color: #28375F; font-family: "Noto Sans", sans-serif; }
+button { background-image: none; text-shadow: none; outline: none; box-shadow: none; }
+.ow-card {
+  background-color: rgba(240,244,255,.88);
+  border: 1px solid rgba(255,255,255,.72);
+  color: #24355D;
+  border-radius: 27px;
+  padding: 15px 17px 17px;
+  box-shadow: 0 12px 33px rgba(28,41,95,.20), inset 0 1px rgba(255,255,255,.72);
+}
+.ow-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 1.1px; color: #5F6D9F; }
+.ow-value { font-size: 30px; font-weight: 800; color: #223A76; margin-top: 3px; margin-bottom: 2px; }
+.ow-secondary { font-size: 12px; color: #52658C; }
+.ow-action, .ow-close {
+  border-radius: 11px; color: #4D6093; border: 0;
+  background-color: rgba(228,232,252,.5); padding: 4px 8px; min-height: 24px;
+}
+.ow-close { font-size: 15px; }
+.ow-action:hover, .ow-close:hover { background-color: rgba(175,190,244,.58); }
+.ow-media-action {
+  min-height: 31px; border-radius: 12px;
+  background-color: rgba(184,194,247,.46); color: #28437D;
+  border: 1px solid rgba(255,255,255,.65); font-size: 15px;
+}
+.ow-media-action:hover { background-color: rgba(158,176,242,.72); }
+.ow-calendar { border-radius: 12px; color: #273D73; font-size: 12px; }
+.ow-calendar header { color: #223A76; }
+.ow-calendar button { color: #3B5392; }
+.ow-manager-toggle {
+  background-color: rgba(233,239,255,.9); color: #28427A;
+  padding: 8px 16px; border-radius: 15px; border: 1px solid rgba(255,255,255,.68);
+  box-shadow: 0 5px 16px rgba(29,35,80,.19); font-weight: 700;
+}
+.ow-manager-toggle:hover { background-color: rgba(244,247,255,.96); }
+.ow-manager {
+  background-color: rgba(239,242,255,.97); color: #28375F; border-radius: 25px;
+  padding: 19px 22px; border: 1px solid rgba(255,255,255,.7);
+  box-shadow: 0 12px 32px rgba(20,30,79,.28);
+}
+.ow-manager-title { font-size: 18px; font-weight: 800; color: #22376B; }
+.ow-manager-subtitle { font-size: 12px; color: #63749A; }
+.ow-manager checkbutton { color: #334A7C; font-size: 13px; padding: 3px; }
+.ow-manager button {
+  background-color: rgba(215,225,254,.70); color: #243D74;
+  border-radius: 12px; padding: 8px 10px;
+}
+.ow-manager button:hover { background-color: rgba(184,203,250,.89); }

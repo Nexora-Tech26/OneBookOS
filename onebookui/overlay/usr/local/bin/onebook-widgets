@@ -1,0 +1,512 @@
+#!/usr/bin/python3
+"""OneBookOS Stage 7: independent GTK3/Wayland desktop widgets.
+
+Widgets use real local data or explicit unavailable states. The process is
+separate from OneBook Shell so a widget failure never kills Start or Notch.
+Positions, sizes, visibility and wallpaper choice live in the user's config.
+"""
+import datetime as dt
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import threading
+import urllib.error
+import urllib.request
+
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gdk, GLib, Gtk, GtkLayerShell
+
+CONFIG = Path.home() / ".config" / "onebookos" / "widgets.json"
+CSS = Path("/usr/share/onebookos/design/widgets.css")
+BACKGROUNDS = Path("/usr/share/backgrounds/onebookos")
+TYPES = ("clock", "weather", "calendar", "battery", "media", "system")
+NAMES = {
+    "clock": "Clock", "weather": "Weather", "calendar": "Calendar",
+    "battery": "Battery", "media": "Media", "system": "Performance",
+}
+SIZES = {"small": 207, "medium": 246, "large": 294}
+WEATHER_URL = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude=54.0933&longitude=18.7778"
+    "&current=temperature_2m,relative_humidity_2m,weather_code"
+    "&timezone=Europe%2FWarsaw"
+)
+
+
+def display_size():
+    display = Gdk.Display.get_default()
+    monitor = display.get_primary_monitor()
+    if monitor is None and display.get_n_monitors():
+        monitor = display.get_monitor(0)
+    if monitor:
+        area = monitor.get_geometry()
+        return int(area.width), int(area.height)
+    screen = Gdk.Screen.get_default()
+    return int(screen.get_width()), int(screen.get_height())
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def surface(layer, top, right, keyboard=False):
+    window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_app_paintable(True)
+    screen = window.get_screen()
+    rgba = screen.get_rgba_visual()
+    if rgba is not None:
+        window.set_visual(rgba)
+    GtkLayerShell.init_for_window(window)
+    GtkLayerShell.set_layer(window, layer)
+    GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.TOP, True)
+    GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, top)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, right)
+    GtkLayerShell.set_exclusive_zone(window, 0)
+    if keyboard:
+        GtkLayerShell.set_keyboard_mode(window, GtkLayerShell.KeyboardMode.ON_DEMAND)
+    return window
+
+
+def run(args, timeout=1):
+    try:
+        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                timeout=timeout, text=True, check=False)
+        return result.stdout.strip() if result.returncode == 0 else ""
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def spawn(args):
+    try:
+        subprocess.Popen(args, start_new_session=True, stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
+def default_layout(width):
+    # The desktop shortcut rail is on the left; widgets live at the right.
+    compact = width < 1150
+    columns = 1 if compact else 2
+    order = ("clock", "weather", "calendar", "battery", "media", "system")
+    row_tops = (83, 275, 489)
+    positions = {}
+    for i, name in enumerate(order):
+        col = i % columns
+        row = i // columns
+        positions[name] = {
+            "top": row_tops[row] if not compact else 76 + i * 174,
+            "right": 32 + col * 270,
+            "size": "medium",
+            "visible": True,
+        }
+    return positions
+
+
+def load_config(width):
+    config = {"version": 1, "wallpaper": "aurora", "widgets": default_layout(width)}
+    try:
+        data = json.loads(CONFIG.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return config
+    if not isinstance(data, dict):
+        return config
+    if data.get("wallpaper") in ("aurora", "night"):
+        config["wallpaper"] = data["wallpaper"]
+    persisted = data.get("widgets", {})
+    if isinstance(persisted, dict):
+        for name in TYPES:
+            item = persisted.get(name)
+            if not isinstance(item, dict):
+                continue
+            target = config["widgets"][name]
+            for key in ("top", "right"):
+                value = item.get(key)
+                if type(value) is int:
+                    target[key] = max(0, value)
+            if item.get("size") in SIZES:
+                target["size"] = item["size"]
+            if type(item.get("visible")) is bool:
+                target["visible"] = item["visible"]
+    return config
+
+
+def save_config(data):
+    CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    temporary = CONFIG.with_suffix(".tmp")
+    temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, CONFIG)
+
+
+def label(text, cls="ow-secondary"):
+    widget = Gtk.Label(label=text, xalign=0)
+    widget.set_ellipsize(3)
+    return add_class(widget, cls)
+
+
+def action(text, callback, css="ow-action"):
+    control = add_class(Gtk.Button(label=text), css)
+    control.connect("clicked", lambda *_: callback())
+    return control
+
+
+def cpu_snapshot():
+    try:
+        with Path("/proc/stat").open("r", encoding="ascii") as handle:
+            values = [int(s) for s in handle.readline().split()[1:]]
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        return sum(values), idle
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def memory_used():
+    try:
+        values = {}
+        for line in Path("/proc/meminfo").read_text(encoding="ascii").splitlines():
+            key, _, rest = line.partition(":")
+            if key in ("MemTotal", "MemAvailable"):
+                values[key] = int(rest.strip().split()[0])
+        total = values["MemTotal"]
+        available = values["MemAvailable"]
+        return round(100 * (total - available) / total) if total else None
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def battery_status():
+    root = Path("/sys/class/power_supply")
+    for battery in sorted(root.glob("BAT*")):
+        try:
+            percent = int((battery / "capacity").read_text().strip())
+            status = (battery / "status").read_text().strip()
+            return max(0, min(percent, 100)), status
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+class Widget:
+    def __init__(self, app, name):
+        self.app = app
+        self.name = name
+        self.data = app.config["widgets"][name]
+        self.drag_base = (0, 0)
+        self.window = surface(GtkLayerShell.Layer.BOTTOM,
+                              self.data["top"], self.data["right"])
+        self.window.set_title("OneBookOS " + NAMES[name] + " widget")
+        self.outer = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8),
+                               "ow-card")
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        grip = Gtk.EventBox()
+        grip.add(label(NAMES[name].upper(), "ow-eyebrow"))
+        grip.set_hexpand(True)
+        gesture = Gtk.GestureDrag.new(grip)
+        gesture.connect("drag-begin", self.begin_drag)
+        gesture.connect("drag-update", self.drag_update)
+        gesture.connect("drag-end", self.drag_end)
+        head.pack_start(grip, True, True, 0)
+        head.pack_end(action("×", self.hide, "ow-close"), False, False, 0)
+        head.pack_end(action("↔", self.cycle_size, "ow-action"), False, False, 0)
+        self.outer.pack_start(head, False, False, 0)
+
+        self.value = label("—", "ow-value")
+        self.detail = label("Loading…", "ow-secondary")
+        self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        if name == "calendar":
+            self.calendar = add_class(Gtk.Calendar(), "ow-calendar")
+            self.calendar.set_display_options(
+                Gtk.CalendarDisplayOptions.SHOW_HEADING
+                | Gtk.CalendarDisplayOptions.SHOW_DAY_NAMES
+            )
+            self.body.pack_start(self.calendar, True, True, 0)
+        else:
+            self.body.pack_start(self.value, False, False, 0)
+            self.body.pack_start(self.detail, False, False, 0)
+        if name == "media":
+            controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            for text, arg in (("⏮", "previous"), ("⏯", "play-pause"), ("⏭", "next")):
+                controls.pack_start(action(text, lambda c=arg: spawn(["playerctl", c]),
+                                           "ow-media-action"), True, True, 0)
+            self.body.pack_start(controls, False, False, 0)
+        self.outer.pack_start(self.body, True, True, 0)
+        self.window.add(self.outer)
+        self.set_geometry()
+        self.window.show_all()
+        if not self.data["visible"]:
+            self.window.hide()
+
+    def set_geometry(self):
+        screen_w, screen_h = display_size()
+        width = min(SIZES[self.data["size"]], max(180, screen_w - 24))
+        self.outer.set_size_request(width, -1)
+        self.window.set_size_request(width, -1)
+        self.data["top"] = max(48, min(self.data["top"], max(48, screen_h - 178)))
+        self.data["right"] = max(12, min(self.data["right"], max(12, screen_w - width - 12)))
+        GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.TOP, self.data["top"])
+        GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.RIGHT, self.data["right"])
+
+    def begin_drag(self, _gesture, _x, _y):
+        self.drag_base = (self.data["top"], self.data["right"])
+
+    def drag_update(self, _gesture, dx, dy):
+        top, right = self.drag_base
+        self.data["top"] = max(48, round(top + dy))
+        self.data["right"] = max(12, round(right - dx))
+        self.set_geometry()
+
+    def drag_end(self, _gesture, dx, dy):
+        self.drag_update(_gesture, dx, dy)
+        self.app.persist()
+
+    def cycle_size(self):
+        sizes = list(SIZES)
+        self.data["size"] = sizes[(sizes.index(self.data["size"]) + 1) % len(sizes)]
+        self.set_geometry()
+        self.app.persist()
+
+    def hide(self):
+        self.data["visible"] = False
+        self.window.hide()
+        self.app.persist()
+        self.app.sync_manager()
+
+    def show(self):
+        self.data["visible"] = True
+        self.window.show_all()
+        self.app.persist()
+
+
+class WidgetsDesktop:
+    def __init__(self):
+        provider = Gtk.CssProvider()
+        provider.load_from_path(str(CSS))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        self.config = load_config(display_size()[0])
+        self.cards = {name: Widget(self, name) for name in TYPES}
+        self.weather_pending = False
+        self.last_cpu = None
+        self.create_manager()
+        # QEMU-only inspection mode: show actual customization surface for screenshot.
+        try:
+            cmdline = Path("/proc/cmdline").read_text(encoding="utf-8")
+        except OSError:
+            cmdline = ""
+        if "obos.widgets-customize-test=1" in cmdline:
+            GLib.timeout_add(850, self.preview_manager_for_qa)
+        self.refresh_clock()
+        self.refresh_battery()
+        self.refresh_media()
+        self.refresh_system()
+        self.update_weather()
+        GLib.timeout_add_seconds(1, self.refresh_clock)
+        GLib.timeout_add_seconds(6, self.refresh_media)
+        GLib.timeout_add_seconds(5, self.refresh_system)
+        GLib.timeout_add_seconds(45, self.refresh_battery)
+        GLib.timeout_add_seconds(1200, self.update_weather)
+        GLib.timeout_add(1800, self.apply_saved_wallpaper)
+        GLib.timeout_add(2100, self.mark_ready)
+
+    def persist(self):
+        try:
+            save_config(self.config)
+        except OSError as exc:
+            print("OneBook Widgets: saving preferences failed:", exc, flush=True)
+
+    def create_manager(self):
+        self.launcher = surface(GtkLayerShell.Layer.TOP, 14, 18)
+        button = action("Widgets  ⚙", self.toggle_manager, "ow-manager-toggle")
+        self.launcher.add(button)
+        self.launcher.show_all()
+
+        self.manager = surface(GtkLayerShell.Layer.OVERLAY, 61, 18, keyboard=True)
+        panel = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=11),
+                          "ow-manager")
+        panel.pack_start(label("Customize your desktop", "ow-manager-title"), False, False, 0)
+        panel.pack_start(label("Show, hide and resize widgets", "ow-manager-subtitle"),
+                         False, False, 0)
+        self.checks = {}
+        for name in TYPES:
+            toggle = Gtk.CheckButton(label=NAMES[name])
+            toggle.set_active(self.config["widgets"][name]["visible"])
+            toggle.connect("toggled", self.toggle_widget, name)
+            self.checks[name] = toggle
+            panel.pack_start(toggle, False, False, 0)
+        panel.pack_start(label("Wallpaper", "ow-eyebrow"), False, False, 0)
+        panel.pack_start(action("Aurora · Lavender", lambda: self.change_wallpaper("aurora")),
+                         False, False, 0)
+        panel.pack_start(action("Night · Indigo", lambda: self.change_wallpaper("night")),
+                         False, False, 0)
+        panel.pack_start(action("Reset widget layout", self.reset_layout),
+                         False, False, 0)
+        panel.pack_start(action("Close", self.toggle_manager), False, False, 0)
+        self.manager.add(panel)
+        self.manager.hide()
+
+    def preview_manager_for_qa(self):
+        self.manager.show_all()
+        return False
+
+    def toggle_manager(self):
+        if self.manager.get_visible():
+            self.manager.hide()
+        else:
+            self.sync_manager()
+            self.manager.show_all()
+
+    def sync_manager(self):
+        for name, control in self.checks.items():
+            expected = self.config["widgets"][name]["visible"]
+            if control.get_active() != expected:
+                control.set_active(expected)
+
+    def toggle_widget(self, toggle, name):
+        if toggle.get_active():
+            self.cards[name].show()
+        else:
+            self.cards[name].hide()
+        self.persist()
+
+    def reset_layout(self):
+        self.config["widgets"] = default_layout(display_size()[0])
+        for name, card in self.cards.items():
+            card.data = self.config["widgets"][name]
+            card.set_geometry()
+            card.window.show_all()
+        self.sync_manager()
+        self.persist()
+
+    def change_wallpaper(self, name):
+        if name not in ("aurora", "night"):
+            return
+        self.config["wallpaper"] = name
+        self.persist()
+        self.restart_wallpaper(name)
+
+    def apply_saved_wallpaper(self):
+        if self.config["wallpaper"] != "aurora":
+            self.restart_wallpaper(self.config["wallpaper"])
+        return False
+
+    @staticmethod
+    def restart_wallpaper(name):
+        target = BACKGROUNDS / ("wallpaper.png" if name == "aurora" else "wallpaper-night.png")
+        if not target.is_file():
+            return
+        # This is the user's own wallpaper process; never run privileged commands.
+        subprocess.run(["pkill", "-u", str(os.getuid()), "-x", "swaybg"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        spawn(["swaybg", "-i", str(target), "-m", "fill"])
+
+    def refresh_clock(self):
+        now = dt.datetime.now().astimezone()
+        clock = self.cards["clock"]
+        clock.value.set_text(now.strftime("%H:%M"))
+        clock.detail.set_text(now.strftime("%a  %d %b %Y"))
+        return True
+
+    def refresh_battery(self):
+        card = self.cards["battery"]
+        state = battery_status()
+        if state:
+            percent, status = state
+            card.value.set_text(f"{percent}%")
+            card.detail.set_text("Battery · " + status)
+        else:
+            card.value.set_text("Not available")
+            card.detail.set_text("No battery found (desktop / VM)")
+        return True
+
+    def refresh_media(self):
+        card = self.cards["media"]
+        entry = run(["playerctl", "metadata", "--format", "{{artist}} — {{title}}"], 1)
+        if entry:
+            card.value.set_text("Now playing")
+            card.detail.set_text(entry[:72])
+        else:
+            card.value.set_text("No music")
+            card.detail.set_text("MPRIS playback controls")
+        return True
+
+    def refresh_system(self):
+        card = self.cards["system"]
+        previous = self.last_cpu
+        current = cpu_snapshot()
+        self.last_cpu = current
+        percent = None
+        if previous and current:
+            total = current[0] - previous[0]
+            idle = current[1] - previous[1]
+            if total > 0:
+                percent = max(0, min(100, round(100 * (total - idle) / total)))
+        memory = memory_used()
+        card.value.set_text(f"CPU  {percent}%" if percent is not None else "CPU  —")
+        card.detail.set_text(f"Memory  {memory}% used" if memory is not None
+                             else "Memory unavailable")
+        return True
+
+    def update_weather(self):
+        if self.weather_pending:
+            return True
+        self.weather_pending = True
+        threading.Thread(target=self.fetch_weather, daemon=True).start()
+        return True
+
+    def fetch_weather(self):
+        try:
+            request = urllib.request.Request(WEATHER_URL, headers={"User-Agent": "OneBookOS/0.1.7"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                payload = json.loads(response.read(16384).decode("utf-8"))
+            now = payload["current"]
+            value = float(now["temperature_2m"])
+            humidity = int(now["relative_humidity_2m"])
+            code = int(now["weather_code"])
+            condition = (
+                "Clear" if code == 0 else
+                "Partly cloudy" if code in (1, 2) else
+                "Cloudy" if code == 3 else
+                "Rain / showers" if code in (51, 53, 55, 61, 63, 65, 80, 81, 82) else
+                "Snow" if code in (71, 73, 75, 85, 86) else
+                "Storm" if code in (95, 96, 99) else "Mixed conditions"
+            )
+            GLib.idle_add(self.weather_result, f"{value:.0f}°", f"Tczew · {condition} · {humidity}% RH")
+        except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError):
+            GLib.idle_add(self.weather_result, "Offline", "Tczew · forecast unavailable")
+        return None
+
+    def weather_result(self, value, detail):
+        self.weather_pending = False
+        self.cards["weather"].value.set_text(value)
+        self.cards["weather"].detail.set_text(detail)
+        return False
+
+    def mark_ready(self):
+        runtime = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+        try:
+            (runtime / "onebook-widgets-layout.json").write_text(
+                json.dumps({"widgets": self.config["widgets"],
+                            "wallpaper": self.config["wallpaper"],
+                            "visible": [n for n in TYPES if self.cards[n].window.get_visible()]},
+                           indent=2) + "\n", encoding="utf-8"
+            )
+            (runtime / "onebook-widgets-ready").write_text(
+                "six GTK layer-shell widgets initialized\n", encoding="utf-8"
+            )
+        except OSError as exc:
+            print("OneBook Widgets: ready marker failed:", exc, flush=True)
+        return False
+
+
+if __name__ == "__main__":
+    WidgetsDesktop()
+    Gtk.main()
