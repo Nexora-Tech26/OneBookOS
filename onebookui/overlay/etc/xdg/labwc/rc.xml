@@ -27,6 +27,7 @@
     <keybind key="W-n"><action name="Execute" command="mousepad"/></keybind>
     <keybind key="W-d"><action name="ToggleShowDesktop"/></keybind>
     <keybind key="W-Up"><action name="ToggleMaximize"/></keybind>
+    <keybind key="W-Down"><action name="Iconify"/></keybind>
     <keybind key="W-Left"><action name="SnapToEdge" direction="left"/></keybind>
     <keybind key="W-Right"><action name="SnapToEdge" direction="right"/></keybind>
     <keybind key="W-1"><action name="GoToDesktop" to="1"/></keybind>

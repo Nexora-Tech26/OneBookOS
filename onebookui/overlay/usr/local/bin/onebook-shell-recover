@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+"""Inspect or change OneBook Shell crash recovery mode (same user only)."""
+import argparse
+import os
+from pathlib import Path
+
+
+def run(action):
+    directory = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    safe = directory / "onebook-shell-safe-mode"
+    state = directory / "onebook-shell-guardian-state"
+    if action == "status":
+        print("OneBook Shell:", state.read_text().strip() if state.exists() else "not running")
+        print("Safe mode:", "enabled" if safe.exists() else "disabled")
+    elif action == "safe":
+        directory.mkdir(parents=True, exist_ok=True)
+        safe.write_text("User requested recovery mode\n", encoding="utf-8")
+        print("Safe mode requested: shell will stop, compositor stays running.")
+    else:
+        safe.unlink(missing_ok=True)
+        print("Recovery cleared: guardian will attempt to start the shell.")
+    return 0
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=("status", "safe", "resume"))
+    raise SystemExit(run(parser.parse_args().action))

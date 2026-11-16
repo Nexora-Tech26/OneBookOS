@@ -1,0 +1,13 @@
+[Unit]
+Description=OneBookOS shell crash recovery QEMU acceptance test
+After=greetd.service
+Wants=greetd.service
+ConditionKernelCommandLine=obos.recovery-test=1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/onebook-shell-recovery-smoke
+TimeoutStartSec=320
+
+[Install]
+WantedBy=graphical.target

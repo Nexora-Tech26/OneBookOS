@@ -2,7 +2,8 @@
 # shellcheck disable=SC2317 # cleanup() is invoked indirectly by EXIT trap.
 # Two real-QEMU boot checks from the built ISO:
 #   headless: isolated wlroots compositor smoke test
-#   graphical: the normal greetd automatic login + DRM Wayland desktop
+#   graphical: normal greetd automatic login + DRM Wayland desktop
+#   recovery: normal graphical login; kill shell and verify independent guardian restart
 set -Eeuo pipefail
 ISO="${1:?Usage: test-qemu.sh path/to/iso [headless|graphical]}"
 MODE="${2:-headless}"
@@ -25,6 +26,11 @@ case "$MODE" in
   graphical)
     TESTARG='obos.gui-test=1'
     MARKER='ONEBOOK_GUI_AUTOLOGIN_OK'
+    VGA='virtio'
+    ;;
+  recovery)
+    TESTARG='obos.recovery-test=1'
+    MARKER='ONEBOOK_SHELL_RECOVERY_OK'
     VGA='virtio'
     ;;
   *) echo "Unknown QEMU test mode: $MODE" >&2; exit 2 ;;
@@ -73,10 +79,12 @@ for _ in $(seq 1 400); do
   fi
   sleep 1
 done
-if [[ "$PASS" == 1 && "$MODE" == graphical ]]; then
+if [[ "$PASS" == 1 && ( "$MODE" == graphical || "$MODE" == recovery ) ]]; then
   # Capture actual graphical pixels, not just a process marker. A blank/absent
   # image must be reported as a failed graphical build.
-  if [[ "$COMPOSITOR" == labwc ]]; then
+  if [[ "$MODE" == recovery ]]; then
+    SHOT="$(dirname "$ISO")/OneBookUI-shell-recovery-qemu.png"
+  elif [[ "$COMPOSITOR" == labwc ]]; then
     SHOT="$(dirname "$ISO")/OneBookUI-graphical-qemu.png"
   else
     SHOT="$(dirname "$ISO")/OneBookUI-wayfire-graphical-qemu.png"

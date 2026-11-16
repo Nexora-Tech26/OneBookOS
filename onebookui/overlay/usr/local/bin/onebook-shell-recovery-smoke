@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Boot a normal graphical Live session, kill only its shell, verify guardian repair.
+set -Eeuo pipefail
+printf '%s\n' 'ONEBOOK_SHELL_RECOVERY_TEST_STARTED' > /dev/ttyS0
+USER_ID="$(id -u obos)"
+RUNTIME="/run/user/$USER_ID"
+READY="$RUNTIME/onebook-shell-ready"
+SAFE="$RUNTIME/onebook-shell-safe-mode"
+COMPOSITOR=labwc
+if grep -qE '(^|[[:space:]])obos\.compositor=wayfire([[:space:]]|$)' /proc/cmdline; then
+    COMPOSITOR=wayfire
+fi
+find_shell_pid() {
+    pgrep -u obos -f '/usr/local/bin/onebook-shell$' | head -n 1 || true
+}
+print_diagnostics() {
+    echo '--- greetd + Wayland session ---'
+    systemctl --no-pager -l status greetd || true
+    pgrep -a -u obos -f 'labwc|wayfire|onebook-shell' || true
+    echo '--- guardian output ---'
+    tail -120 /tmp/onebook-shell-guardian.log || true
+    echo '--- compositor output ---'
+    tail -120 /tmp/onebook-session.log || true
+    echo '--- recovery flags ---'
+    ls -la "$RUNTIME" || true
+}
+trap 'echo ONEBOOK_SHELL_RECOVERY_FAILED > /dev/ttyS0; print_diagnostics > /dev/ttyS0 2>&1' ERR
+old_pid=''
+for _ in $(seq 1 200); do
+    old_pid="$(find_shell_pid)"
+    if systemctl is-active --quiet greetd && \
+       pgrep -u obos -x "$COMPOSITOR" >/dev/null && \
+       pgrep -u obos -f '/usr/local/bin/onebook-shell-guardian' >/dev/null && \
+       test -n "$old_pid" && test -s "$READY" && test ! -e "$SAFE"; then
+        break
+    fi
+    sleep 1
+done
+test -n "$old_pid" && test -s "$READY"
+kill -KILL "$old_pid"
+restarted=0
+for _ in $(seq 1 80); do
+    new_pid="$(find_shell_pid)"
+    if test -n "$new_pid" && test "$new_pid" != "$old_pid" && \
+       test -s "$READY" && test ! -e "$SAFE" && \
+       pgrep -u obos -x "$COMPOSITOR" >/dev/null; then
+        restarted=1
+        break
+    fi
+    sleep 1
+done
+test "$restarted" -eq 1
+sleep 8
+test -s "$READY" && test ! -e "$SAFE"
+test -n "$(find_shell_pid)"
+echo ONEBOOK_SHELL_RECOVERY_OK > /dev/ttyS0
