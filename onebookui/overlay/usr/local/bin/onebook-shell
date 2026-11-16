@@ -271,7 +271,7 @@ class Desktop:
         menu.pack_start(scroller, True, True, 0)
         menu.pack_start(styled(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), "menu-divider"), False, False, 0)
         footer = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9), "menu-footer")
-        footer.pack_start(styled(Gtk.Label(label="OneBookOS 0.3  ·  Preview", xalign=0), "menu-subtitle"), True, True, 0)
+        footer.pack_start(styled(Gtk.Label(label="OneBookOS · Developer Preview", xalign=0), "menu-subtitle"), True, True, 0)
         footer.pack_end(button(Gtk.Label(label="Power"), lambda: spawn(["systemctl", "poweroff"])), False, False, 0)
         footer.pack_end(button(Gtk.Label(label="Log out"), lambda: spawn(["loginctl", "terminate-user", os.environ.get("USER", "obos")])), False, False, 0)
         menu.pack_start(footer, False, False, 0)
