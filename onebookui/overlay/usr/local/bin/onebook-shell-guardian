@@ -1,0 +1,138 @@
+#!/usr/bin/python3
+"""Keep OneBook Shell alive independently of its Wayland compositor.
+
+If the GTK shell repeatedly crashes, stop the restart loop and open an
+independent terminal with recovery instructions. No elevated privileges.
+"""
+import argparse
+from collections import deque
+import os
+from pathlib import Path
+import signal
+import subprocess
+import time
+
+SHELL_DEFAULT = "/usr/local/bin/onebook-shell"
+
+
+def runtime_paths():
+    directory = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    directory.mkdir(parents=True, exist_ok=True)
+    return (
+        directory / "onebook-shell-ready",
+        directory / "onebook-shell-safe-mode",
+        directory / "onebook-shell-guardian-state",
+    )
+
+
+def write_state(path, value):
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(value + "\n", encoding="utf-8")
+    temp.replace(path)
+
+
+def run(args):
+    ready, safe, state = runtime_paths()
+    restarts = deque()
+    running = True
+    child = None
+    fallback_launched = False
+
+    def shutdown(_signum, _frame):
+        nonlocal running
+        running = False
+        if child is not None and child.poll() is None:
+            child.terminate()
+
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    write_state(state, "starting")
+    while running:
+        if safe.exists():
+            ready.unlink(missing_ok=True)
+            write_state(state, "safe-mode")
+            if not fallback_launched and not args.no_fallback:
+                # This terminal survives a GTK shell crash because it is a
+                # separate Wayland client, managed by the compositor.
+                try:
+                    subprocess.Popen([
+                        "foot", "-e", "sh", "-c",
+                        "printf '\\nOneBookUI entered recovery mode.\\n"
+                        "Run: onebook-shell-recover resume\\n"
+                        "If necessary switch to a TTY with Ctrl+Alt+F3.\\n\\n'; exec sh"
+                    ], stdin=subprocess.DEVNULL, start_new_session=True)
+                    fallback_launched = True
+                except OSError as error:
+                    print("Could not start recovery terminal:", error, flush=True)
+            time.sleep(0.25)
+            continue
+
+        fallback_launched = False
+        ready.unlink(missing_ok=True)
+        write_state(state, "starting")
+        started = time.monotonic()
+        try:
+            child = subprocess.Popen([args.shell], stdin=subprocess.DEVNULL)
+        except OSError as error:
+            print("Could not launch OneBook Shell:", error, flush=True)
+            child = None
+
+        interrupted_for_safe_mode = False
+        if child is not None:
+            write_state(state, "running")
+            while running and child.poll() is None:
+                if safe.exists():
+                    interrupted_for_safe_mode = True
+                    child.terminate()
+                time.sleep(0.25)
+            if not running and child.poll() is None:
+                child.terminate()
+            try:
+                exit_code = child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                exit_code = child.wait()
+        else:
+            exit_code = 127
+
+        ready.unlink(missing_ok=True)
+        if not running:
+            break
+        if interrupted_for_safe_mode or safe.exists():
+            continue
+
+        uptime = time.monotonic() - started
+        if uptime >= args.window:
+            restarts.clear()
+        restarts.append(time.monotonic())
+        while restarts and (time.monotonic() - restarts[0] > args.window):
+            restarts.popleft()
+        print(
+            f"OneBook Shell ended (exit={exit_code}, uptime={uptime:.1f}s,"
+            f" crash attempts={len(restarts)})",
+            flush=True,
+        )
+        if len(restarts) >= args.max_failures:
+            safe.write_text("Crash-loop safeguard activated\n", encoding="utf-8")
+            write_state(state, "safe-mode")
+            continue
+        write_state(state, "restarting")
+        time.sleep(args.retry_delay)
+
+    ready.unlink(missing_ok=True)
+    write_state(state, "stopped")
+    return 0
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--shell", default=SHELL_DEFAULT)
+    parser.add_argument("--max-failures", type=int, default=3)
+    parser.add_argument("--window", type=float, default=45.0)
+    parser.add_argument("--retry-delay", type=float, default=1.0)
+    parser.add_argument("--no-fallback", action="store_true",
+                        help="disable opening the recovery terminal (tests only)")
+    arguments = parser.parse_args()
+    if arguments.max_failures < 1 or arguments.window <= 0 or arguments.retry_delay < 0:
+        parser.error("invalid restart policy")
+    raise SystemExit(run(arguments))

@@ -1,0 +1,98 @@
+name: Stage 03 — OneBook Shell and Recovery Developer ISO
+
+on:
+  push:
+    branches: [feature/stage-03-onebook-shell]
+    paths:
+      - onebookui/**
+      - display-engine/**
+      - tests/test_stage3_shell.py
+      - tests/test_display_engine.py
+      - .github/workflows/stage3-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage3-iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show build space
+        run: df -h .
+      - name: Restore package rootfs
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install ISO and QEMU tools
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Verify source, shell supervisor and configs
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_stage3_shell.py -v
+          python3 -m unittest discover -s tests -p test_display_engine.py -v
+          python3 -m unittest discover -s tests -p test_foundation.py -v
+          bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-session onebookui/overlay/usr/local/bin/onebook-shell-recovery-smoke onebookui/overlay/etc/xdg/labwc/autostart
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell onebookui/overlay/usr/local/bin/onebook-shell-guardian onebookui/overlay/usr/local/bin/onebook-shell-recover
+          shellcheck -e SC2016 onebookui/overlay/usr/local/bin/onebook-shell-recovery-smoke onebookui/overlay/etc/xdg/labwc/autostart display-engine/build-stage3-iso.sh
+      - name: Build Stage 3 Live ISO
+        run: sudo bash display-engine/build-stage3-iso.sh
+      - name: Verify ISO boot catalog and SHA256
+        run: |
+          set -euo pipefail
+          ISO="dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso"
+          xorriso -indev "$ISO" -report_el_torito plain
+          xorriso -indev "$ISO" -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage3)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Labwc headless QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/labwc-headless.log
+      - name: Labwc graphical QEMU with screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso graphical labwc 2>&1 | tee dist/labwc-graphical.log
+      - name: Controlled shell crash and recovery QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso recovery labwc 2>&1 | tee dist/labwc-recovery.log
+      - name: Experimental Wayfire graphical QEMU
+        id: wayfire
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso graphical wayfire 2>&1 | tee dist/wayfire-graphical.log
+      - name: Report optional Wayfire check
+        if: always()
+        run: |
+          echo "Wayfire optional graphical outcome: ${{ steps.wayfire.outcome }}"
+          if [[ "${{ steps.wayfire.outcome }}" != success ]]; then
+            echo "::warning::Wayfire QEMU smoke failed; keep labwc as default."
+          fi
+      - name: Archive QEMU screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage03-QEMU-Recovery-Evidence
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload Live ISO only after required tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage03-Live-ISO
+          path: |
+            dist/OneBookOS-0.1.3-OneBookShell-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage3
+          if-no-files-found: error
+          retention-days: 7
