@@ -19,3 +19,7 @@ menu.items.active.bg.color: {{accent_light}}
 menu.items.active.text.color: #334EB0
 osd.bg.color: {{app_header}}
 osd.label.text.color: {{app_text}}
+
+# Keep SSD title bars opaque; translucent corner rendering requires compositor review.
+window.active.shadow.size: 0
+window.inactive.shadow.size: 0

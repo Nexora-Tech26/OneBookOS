@@ -147,7 +147,7 @@ class Desktop:
             left.pack_start(control, False, False, 0)
             self.left_buttons.append(control)
         for name, label, command in (
-            ("settings", "Network settings", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
             ("monitor", "System monitor", ["foot", "-e", "top"]),
         ):
             control = button(icon(name, 30), lambda c=command: spawn(c), tip=label)
@@ -202,8 +202,8 @@ class Desktop:
         for name, title, command in [
             ("files", "Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
-            ("notes", "Notes", ["mousepad"]),
-            ("settings", "Network", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
+            ("monitor", "Task Manager", ["xfce4-taskmanager"]),
         ]:
             tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             tile.pack_start(icon(name, 54), False, False, 0)
@@ -325,7 +325,7 @@ class Desktop:
             ("files", "Files", ["thunar"]),
             ("terminal", "Terminal", ["foot"]),
             ("notes", "Notes", ["mousepad"]),
-            ("settings", "Settings", ["nm-connection-editor"]),
+            ("settings", "Settings", ["xfce4-settings-manager"]),
         ]:
             tile = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7), "quick-tile")
             tile.pack_start(icon(name, 38), False, False, 0)

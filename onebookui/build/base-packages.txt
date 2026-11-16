@@ -48,3 +48,14 @@ foot
 thunar
 mousepad
 wlr-randr
+
+# Stage 6: familiar Ubuntu apps until native OneBookOS apps are ready
+xfce4-settings
+xfce4-taskmanager
+pavucontrol
+blueman
+galculator
+ristretto
+playerctl
+mako-notifier
+libnotify-bin

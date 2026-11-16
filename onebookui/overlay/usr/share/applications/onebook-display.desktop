@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Display (Wayland)
+Comment=Show monitors in OneBookOS
+Exec=foot -e onebook-display --list
+Type=Application
+Icon=video-display
+Categories=Settings;HardwareSettings;
+Terminal=false

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Sound
+Exec=pavucontrol
+Type=Application
+Icon=multimedia-volume-control
+Categories=Settings;AudioVideo;
+Terminal=false
