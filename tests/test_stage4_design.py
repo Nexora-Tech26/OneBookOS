@@ -87,7 +87,10 @@ class DesignTests(unittest.TestCase):
     def test_wallpaper_and_window_buttons(self):
         wp = ET.parse(ROOT / "branding/wallpaper.svg").getroot()
         self.assertTrue(wp.tag.endswith("svg"))
-        self.assertIn("#FF9CEF", (ROOT / "branding/wallpaper.svg").read_text())
+        # Stage 7 retains the original Stage 4 accent in the Night variant,
+        # while Aurora Lavender becomes the new default.
+        self.assertIn("#FF9CEF", (ROOT / "branding/wallpaper-night.svg").read_text())
+        self.assertIn("#A9B9EF", (ROOT / "branding/wallpaper.svg").read_text())
         directory = ROOT / "onebookui/overlay/usr/share/themes/OneBookUI/openbox-3"
         for kind in ("close", "iconify", "max", "max_toggled"):
             for status in ("active", "inactive"):
