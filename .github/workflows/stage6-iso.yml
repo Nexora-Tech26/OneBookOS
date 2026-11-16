@@ -1,0 +1,93 @@
+name: Stage 06 — Dynamic Notch and Standard Apps Live ISO
+
+on:
+  push:
+    branches: [feature/stage-06-dynamic-notch]
+    paths:
+      - onebookui/**
+      - ui-kit/**
+      - display-engine/**
+      - tests/**
+      - .github/workflows/stage6-iso.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show available storage
+        run: df -h .
+      - name: Restore package base if available
+        uses: actions/cache@v4
+        with:
+          path: .onebookui-cache/base-rootfs.tar.zst
+          key: stage2-ubuntu-noble-amd64-${{ hashFiles('onebookui/build/base-packages.txt') }}
+      - name: Install builder and QEMU tools
+        run: sudo bash onebookui/build/install-deps.sh
+      - name: Check design tokens, notch and previous regression tests
+        run: |
+          set -euo pipefail
+          python3 ui-kit/build.py --check
+          python3 -m unittest discover -s tests -p test_stage6_notch.py -v
+          python3 -m unittest discover -s tests -p test_stage5_layout.py -v
+          python3 -m unittest discover -s tests -p test_stage4_design.py -v
+          python3 -m unittest discover -s tests -p test_stage3_shell.py -v
+          python3 -m unittest discover -s tests -p test_display_engine.py -v
+          python3 -m unittest discover -s tests -p test_foundation.py -v
+          bash -n onebookui/build/*.sh display-engine/*.sh onebookui/overlay/usr/local/bin/onebook-notch-smoke onebookui/overlay/usr/local/bin/onebook-compositor-qa-apps
+          python3 -m py_compile onebookui/overlay/usr/local/bin/onebook-shell
+          shellcheck -e SC2016 display-engine/build-stage6-iso.sh onebookui/overlay/usr/local/bin/onebook-notch-smoke
+      - name: Build OneBookOS 0.1.6 Live ISO
+        run: sudo bash display-engine/build-stage6-iso.sh
+      - name: Verify ISO GRUB and SHA256
+        run: |
+          set -euo pipefail
+          ISO=dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso
+          xorriso -indev "$ISO" -report_el_torito plain
+          xorriso -indev "$ISO" -ls /casper
+          (cd dist && sha256sum -c SHA256SUMS-stage6)
+          sudo chown -R "$(id -u):$(id -g)" dist
+      - name: Labwc headless QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso headless labwc 2>&1 | tee dist/labwc-headless.log
+      - name: Labwc normal desktop QEMU and screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso graphical labwc 2>&1 | tee dist/labwc-graphical.log
+      - name: Expanded Dynamic Notch plus real settings QEMU screenshot
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso notch labwc 2>&1 | tee dist/labwc-notch.log
+      - name: Shell crash recovery regression QEMU
+        run: |
+          set -o pipefail
+          bash onebookui/build/test-qemu.sh dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso recovery labwc 2>&1 | tee dist/labwc-recovery.log
+      - name: Preserve screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage06-QEMU-and-Notch-Screenshots
+          path: |
+            dist/*qemu.png
+            dist/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Publish Live ISO only after all required QEMU tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneBookOS-Stage06-Live-ISO
+          path: |
+            dist/OneBookOS-0.1.6-DynamicNotch-DeveloperPreview-amd64.iso
+            dist/SHA256SUMS-stage6
+          if-no-files-found: error
+          retention-days: 7
